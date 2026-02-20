@@ -106,7 +106,7 @@ export async function POST(request: Request) {
       });
       if (row) {
         const currentData = (row.data ?? {}) as Record<string, unknown>;
-        let newData: Record<string, unknown> = { ...currentData };
+        const newData: Record<string, unknown> = { ...currentData };
 
         if (isRatingAndReason) {
           const jsonStr = text.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "").trim();
