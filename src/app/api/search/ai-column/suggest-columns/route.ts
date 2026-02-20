@@ -59,7 +59,7 @@ Sé conciso en "reason" (máximo una frase).`;
     const text = (response.text ?? "").trim();
     // Quitar posibles bloques de código markdown
     const jsonStr = text.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "").trim();
-    let parsed: { suggestions?: { columnId: string; header: string; reason: string }[] };
+    let parsed: { suggestions?: unknown[] };
     try {
       parsed = JSON.parse(jsonStr) as { suggestions?: unknown[] };
     } catch {
