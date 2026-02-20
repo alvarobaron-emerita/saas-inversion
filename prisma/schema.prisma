@@ -1,0 +1,74 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id    String @id @default(cuid())
+  email String @unique
+  name  String?
+}
+
+model DiscoveryProject {
+  id        String   @id @default(cuid())
+  name      String
+  sector    String?
+  context   String?
+  report    Json?
+  createdAt DateTime @default(now())
+}
+
+model SearchProject {
+  id        String       @id @default(cuid())
+  name      String
+  createdAt DateTime     @default(now())
+  rows      SearchRow[]
+  columns   SearchColumn[]
+  views     SearchView[]
+}
+
+model SearchView {
+  id        String        @id @default(cuid())
+  projectId String
+  project   SearchProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  name      String
+  sortOrder Int           @default(0)
+}
+
+model SearchRow {
+  id        String        @id @default(cuid())
+  projectId String
+  project   SearchProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  rowIndex  Int
+  status    String        @default("inbox") // inbox | viewId (SearchView.id)
+  data      Json
+}
+
+model SearchColumn {
+  id               String        @id @default(cuid())
+  projectId        String
+  project          SearchProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  field            String
+  header           String
+  type             String        // text | formula | ai
+  prompt           String?
+  formula          String?
+  inputColumnIds   Json?         // array of column IDs for AI context; null = all columns
+  useOnlyRelevant  Boolean       @default(false) // when true, ask LLM to use only relevant JSON fields
+  outputStyle      String?       // 'single' | 'rating_and_reason'; only for type ai
+  pairColumnId     String?       // id of column that receives explanation (only on main rating column)
+  width            Int?
+  pinned           String?       // 'left' | 'right' | null
+  hidden           Boolean       @default(false)
+}
+
+model Settings {
+  id             String   @id @default(cuid())
+  thesis         String   @default("")
+  kpis           Json     @default("[]")
+  reportSections Json     @default("[]")
+}
