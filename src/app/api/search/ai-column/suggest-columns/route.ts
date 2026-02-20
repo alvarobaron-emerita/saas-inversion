@@ -80,9 +80,9 @@ Sé conciso en "reason" (máximo una frase).`;
         (s: { columnId?: string; header?: string; reason?: string }) =>
           s && typeof s.columnId === "string" && idToHeader.has(s.columnId)
       )
-      .map((s: { columnId: string; header?: string; reason?: string }) => ({
-        columnId: s.columnId,
-        header: idToHeader.get(s.columnId) ?? s.header ?? "",
+      .map((s: { columnId?: string; header?: string; reason?: string }) => ({
+        columnId: s.columnId ?? "",
+        header: idToHeader.get(s.columnId ?? "") ?? s.header ?? "",
         reason: typeof s.reason === "string" ? s.reason.trim() : "",
       }));
 

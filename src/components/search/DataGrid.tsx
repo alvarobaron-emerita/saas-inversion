@@ -270,7 +270,7 @@ export const DataGrid = forwardRef<AgGridReactType, DataGridProps>(function Data
   const cellPopoverRef = useRef<HTMLDivElement>(null);
 
   const onCellDoubleClicked = useCallback(
-    (event: { event: MouseEvent; colId?: string }) => {
+    (event: { event?: Event | null; colId?: string }) => {
       if (event.colId === "_select") return;
       const cellEl = (event.event?.target as HTMLElement)?.closest?.(".ag-cell");
       if (!cellEl) return;
