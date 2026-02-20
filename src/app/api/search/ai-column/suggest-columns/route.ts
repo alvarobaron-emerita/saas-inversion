@@ -69,7 +69,11 @@ Sé conciso en "reason" (máximo una frase).`;
       );
     }
 
-    const raw = Array.isArray(parsed.suggestions) ? parsed.suggestions : [];
+    const raw = (Array.isArray(parsed.suggestions) ? parsed.suggestions : []) as {
+      columnId?: string;
+      header?: string;
+      reason?: string;
+    }[];
     const idToHeader = new Map(columns.map((c: { id: string; header: string }) => [c.id, c.header]));
     const suggestions: { columnId: string; header: string; reason: string }[] = raw
       .filter(
