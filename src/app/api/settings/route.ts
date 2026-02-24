@@ -3,6 +3,20 @@ import { prisma } from "@/lib/db/prisma";
 import { DEFAULT_REPORT_SECTIONS } from "@/lib/discovery-defaults";
 import type { SettingsData } from "@/types/settings";
 
+function normalizeReportSections(raw: unknown): SettingsData["reportSections"] {
+  if (Array.isArray(raw) && raw.length > 0) return raw as SettingsData["reportSections"];
+  if (Array.isArray(raw)) return [];
+  if (typeof raw === "string") {
+    try {
+      const parsed = JSON.parse(raw) as unknown;
+      return Array.isArray(parsed) ? (parsed as SettingsData["reportSections"]) : [];
+    } catch {
+      return [];
+    }
+  }
+  return [];
+}
+
 export async function GET() {
   try {
     let settings = await prisma.settings.findFirst({ orderBy: { id: "asc" } });
@@ -15,14 +29,18 @@ export async function GET() {
         },
       });
     }
-    const reportSections = (settings.reportSections ?? []) as unknown as SettingsData["reportSections"];
+    const reportSections = normalizeReportSections(settings.reportSections);
     if (reportSections.length === 0) {
-      settings = await prisma.settings.update({
+      await prisma.settings.update({
         where: { id: settings.id },
         data: { reportSections: JSON.parse(JSON.stringify(DEFAULT_REPORT_SECTIONS)) },
       });
+      settings = await prisma.settings.findUnique({
+        where: { id: settings.id },
+      });
+      if (!settings) throw new Error("Settings not found after seed");
     }
-    const finalSections = (settings.reportSections ?? []) as unknown as SettingsData["reportSections"];
+    const finalSections = normalizeReportSections(settings.reportSections);
     return NextResponse.json({
       thesis: settings.thesis ?? "",
       kpis: (settings.kpis ?? []) as unknown as SettingsData["kpis"],
