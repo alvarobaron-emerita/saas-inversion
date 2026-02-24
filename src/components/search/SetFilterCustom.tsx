@@ -137,14 +137,17 @@ export const SetFilterCustom = forwardRef(function SetFilterCustom(
           setAppliedModel(set);
         },
         doesFilterPass(params: {
-          node: { data?: Record<string, unknown> };
+          node?: { data?: Record<string, unknown> };
+          data?: Record<string, unknown>;
           colDef?: { field?: string };
           api?: { getValue: (colId: string, node: { data?: Record<string, unknown> }) => unknown };
         }): boolean {
           const values = getEffectiveApplied() ?? selected;
           if (values.size === 0) return false;
           if (values.size === uniqueValues.length) return true;
-          const v = getValue(params.node);
+          const rowData = params.node?.data ?? params.data;
+          if (!rowData) return false;
+          const v = getValue({ data: rowData });
           const s = formatCellValue(v);
           return values.has(s);
         },
