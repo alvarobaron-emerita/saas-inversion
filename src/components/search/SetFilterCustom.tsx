@@ -128,63 +128,139 @@ export const SetFilterCustom = forwardRef(function SetFilterCustom(
   );
 
   return (
-    <div className="ag-filter-body-wrapper ag-set-filter-list" style={{ minWidth: 200, maxHeight: 320 }}>
-      <div className="ag-set-filter-select-all ag-filter-header-container">
-        <a
-          className="ag-set-filter-select-all-button"
-          onClick={selectAll}
-          role="button"
-          style={{ marginRight: 8, cursor: "pointer" }}
-        >
-          Select all {uniqueValues.length}
-        </a>
-        <a
-          className="ag-set-filter-clear-button"
-          onClick={clearAll}
-          role="button"
-          style={{ cursor: "pointer" }}
-        >
-          Clear
-        </a>
-      </div>
-      <div className="ag-set-filter-filter" style={{ padding: "4px 8px" }}>
-        <span style={{ fontSize: 12, color: "#666" }}>Displaying {filteredValues.length}</span>
-      </div>
-      <div className="ag-set-filter-filter" style={{ padding: "4px 8px" }}>
+    <div
+      className="set-filter-custom"
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        width: 260,
+        height: 320,
+        minHeight: 320,
+        maxHeight: 320,
+        backgroundColor: "#fff",
+        border: "1px solid #e4e4e7",
+        borderRadius: 8,
+        boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
+        overflow: "hidden",
+      }}
+    >
+      <div style={{ flex: "0 0 auto", padding: "10px 12px", borderBottom: "1px solid #e4e4e7", backgroundColor: "#fafafa" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8, fontSize: 12, color: "#71717a" }}>
+          <button
+            type="button"
+            onClick={selectAll}
+            style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: "#18181b", fontWeight: 500, textDecoration: "underline", fontSize: 12 }}
+          >
+            Seleccionar todo ({uniqueValues.length})
+          </button>
+          <button
+            type="button"
+            onClick={clearAll}
+            style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: "#71717a", fontSize: 12, textDecoration: "underline" }}
+          >
+            Limpiar
+          </button>
+        </div>
+        <div style={{ fontSize: 11, color: "#71717a", marginBottom: 6 }}>
+          {uniqueValues.length === 0 ? "Cargando…" : `Mostrando ${filteredValues.length} de ${uniqueValues.length}`}
+        </div>
         <input
           type="text"
-          placeholder="Search..."
-          className="ag-input-field-input ag-text-field-input"
+          placeholder="Buscar…"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          style={{ width: "100%", padding: "4px 8px" }}
+          style={{
+            width: "100%",
+            boxSizing: "border-box",
+            padding: "6px 10px",
+            border: "1px solid #e4e4e7",
+            borderRadius: 6,
+            fontSize: 13,
+            outline: "none",
+          }}
         />
       </div>
-      <div className="ag-set-filter-list" style={{ maxHeight: 200, overflowY: "auto", padding: "4px 0" }}>
-        {filteredValues.map((value) => (
-          <label
-            key={value}
-            className="ag-set-filter-item"
-            style={{ display: "flex", alignItems: "center", padding: "2px 8px", cursor: "pointer", fontSize: 13 }}
-          >
-            <input
-              type="checkbox"
-              checked={selected.has(value)}
-              onChange={() => toggle(value)}
-              style={{ marginRight: 8 }}
-            />
-            <span className="ag-set-filter-item-value" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-              {value}
-            </span>
-          </label>
-        ))}
+
+      <div
+        style={{
+          flex: "1 1 0",
+          minHeight: 0,
+          overflowY: "auto",
+          padding: "6px 0",
+        }}
+      >
+        {filteredValues.length === 0 ? (
+          <div style={{ padding: "16px 12px", fontSize: 13, color: "#71717a", textAlign: "center" }}>
+            {uniqueValues.length === 0 ? "Sin datos" : "Ningún valor coincide con la búsqueda"}
+          </div>
+        ) : (
+          filteredValues.map((value) => (
+            <label
+              key={value}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                padding: "6px 12px",
+                cursor: "pointer",
+                fontSize: 13,
+                color: "#18181b",
+                gap: 8,
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={selected.has(value)}
+                onChange={() => toggle(value)}
+                style={{ width: 14, height: 14, margin: 0, flexShrink: 0 }}
+              />
+              <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{value}</span>
+            </label>
+          ))
+        )}
       </div>
-      <div className="ag-filter-apply-panel" style={{ padding: "8px", borderTop: "1px solid #eee", display: "flex", gap: 8, justifyContent: "flex-end" }}>
-        <button type="button" className="ag-button ag-standard-button" onClick={reset} style={{ padding: "4px 12px" }}>
-          Reset
+
+      <div
+        style={{
+          flex: "0 0 auto",
+          display: "flex",
+          gap: 8,
+          justifyContent: "flex-end",
+          padding: "10px 12px",
+          borderTop: "1px solid #e4e4e7",
+          backgroundColor: "#fafafa",
+        }}
+      >
+        <button
+          type="button"
+          onClick={reset}
+          style={{
+            padding: "6px 14px",
+            fontSize: 13,
+            fontWeight: 500,
+            border: "1px solid #d4d4d8",
+            borderRadius: 6,
+            backgroundColor: "#fff",
+            color: "#3f3f46",
+            cursor: "pointer",
+          }}
+        >
+          Restablecer
         </button>
-        <button type="button" className="ag-button ag-standard-button ag-button-primary" onClick={apply} style={{ padding: "4px 12px" }}>
-          Apply
+        <button
+          type="button"
+          onClick={apply}
+          style={{
+            padding: "6px 14px",
+            fontSize: 13,
+            fontWeight: 500,
+            border: "none",
+            borderRadius: 6,
+            backgroundColor: "#18181b",
+            color: "#fff",
+            cursor: "pointer",
+          }}
+        >
+          Aplicar
         </button>
       </div>
     </div>
