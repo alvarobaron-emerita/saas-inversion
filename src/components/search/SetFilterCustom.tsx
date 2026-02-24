@@ -91,9 +91,6 @@ export const SetFilterCustom = forwardRef(function SetFilterCustom(
     filterChangedCallback({ apply: true });
   }, [uniqueValues, filterChangedCallback]);
 
-  const currentModel = appliedModel ?? selected;
-  const isActive = currentModel.size > 0 && currentModel.size < uniqueValues.length;
-
   useImperativeHandle(
     ref,
     () => ({
