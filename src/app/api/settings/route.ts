@@ -16,11 +16,17 @@ export async function GET() {
       });
     }
     const reportSections = (settings.reportSections ?? []) as unknown as SettingsData["reportSections"];
-    const effectiveReportSections = reportSections.length === 0 ? DEFAULT_REPORT_SECTIONS : reportSections;
+    if (reportSections.length === 0) {
+      settings = await prisma.settings.update({
+        where: { id: settings.id },
+        data: { reportSections: JSON.parse(JSON.stringify(DEFAULT_REPORT_SECTIONS)) },
+      });
+    }
+    const finalSections = (settings.reportSections ?? []) as unknown as SettingsData["reportSections"];
     return NextResponse.json({
       thesis: settings.thesis ?? "",
       kpis: (settings.kpis ?? []) as unknown as SettingsData["kpis"],
-      reportSections: effectiveReportSections,
+      reportSections: finalSections,
     });
   } catch (error) {
     console.error("Settings GET error:", error);
@@ -50,12 +56,10 @@ export async function PUT(request: Request) {
         },
       });
     }
-    const reportSections = (settings.reportSections ?? []) as unknown as SettingsData["reportSections"];
-    const effectiveReportSections = reportSections.length === 0 ? DEFAULT_REPORT_SECTIONS : reportSections;
     const payload = {
       thesis: settings.thesis ?? "",
       kpis: (settings.kpis ?? []) as unknown as SettingsData["kpis"],
-      reportSections: effectiveReportSections,
+      reportSections: (settings.reportSections ?? []) as unknown as SettingsData["reportSections"],
     };
     return NextResponse.json(payload);
   } catch (error) {

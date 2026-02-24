@@ -44,22 +44,21 @@ export async function POST(request: Request) {
       );
     }
 
-    const settings = await prisma.settings.findFirst();
+    const settings = await prisma.settings.findFirst({ orderBy: { id: "asc" } });
     const thesis = settings?.thesis ?? "";
     const reportSections = (settings?.reportSections ?? []) as { id: string; name: string; prompt: string }[];
     const context = project.context ?? "";
 
-    if (reportSections.length === 0) {
-      reportSections.push(...DEFAULT_REPORT_SECTIONS);
-    }
+    const sectionsToUse =
+      reportSections.length === 0 ? [...DEFAULT_REPORT_SECTIONS] : reportSections;
 
-    const total = reportSections.length;
+    const total = sectionsToUse.length;
     const stream = new ReadableStream({
       async start(controller) {
         const results: ReportSectionResult[] = [];
         try {
-          for (let i = 0; i < reportSections.length; i++) {
-            const section = reportSections[i];
+          for (let i = 0; i < sectionsToUse.length; i++) {
+            const section = sectionsToUse[i];
             sendEvent(controller, {
               type: "section_start",
               index: i,
