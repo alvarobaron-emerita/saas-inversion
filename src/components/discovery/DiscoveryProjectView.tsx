@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Trash2, Zap } from "lucide-react";
+import { ArrowLeft, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -84,17 +84,6 @@ export function DiscoveryProjectView({ projectId }: { projectId: string }) {
           <Zap className="h-5 w-5 shrink-0 text-zinc-600" />
           <h1 className="text-lg font-semibold text-zinc-900 truncate">{project.name}</h1>
         </div>
-        <div className="relative flex items-center">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setDeleteDialogOpen(true)}
-            className="text-zinc-500 hover:text-red-600"
-            title="Eliminar proyecto"
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
-        </div>
       </div>
       <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <DialogContent className="sm:max-w-md">
@@ -130,6 +119,7 @@ export function DiscoveryProjectView({ projectId }: { projectId: string }) {
           <AnalysisCanvas
             report={project.report as ReportContent | null}
             projectId={project.id}
+            onDeleteClick={() => setDeleteDialogOpen(true)}
             onReportSave={async (report) => {
               const res = await fetch(`/api/discovery/projects/${project.id}`, {
                 method: "PATCH",

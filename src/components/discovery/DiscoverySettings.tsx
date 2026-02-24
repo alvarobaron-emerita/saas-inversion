@@ -28,6 +28,7 @@ export function DiscoverySettings() {
   const { data, isLoading, error } = useQuery({
     queryKey: ["settings"],
     queryFn: fetchSettings,
+    refetchOnMount: "always",
   });
 
   const [formData, setFormData] = useState<SettingsData | null>(null);

@@ -5,7 +5,7 @@ import type { ReportContent } from "@/types/discovery";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Pencil, Save } from "lucide-react";
+import { Pencil, Save, Trash2 } from "lucide-react";
 import { ReportSectionDisplay } from "./ReportSection";
 
 export type AnalysisProgress = {
@@ -20,9 +20,10 @@ interface AnalysisCanvasProps {
   progress?: AnalysisProgress | null;
   projectId?: string;
   onReportSave?: (report: ReportContent) => Promise<void>;
+  onDeleteClick?: () => void;
 }
 
-export function AnalysisCanvas({ report, isLoading, progress, projectId, onReportSave }: AnalysisCanvasProps) {
+export function AnalysisCanvas({ report, isLoading, progress, projectId, onReportSave, onDeleteClick }: AnalysisCanvasProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [localReport, setLocalReport] = useState<ReportContent | null>(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -127,10 +128,22 @@ export function AnalysisCanvas({ report, isLoading, progress, projectId, onRepor
               {isSaving ? "Guardando..." : "Guardar"}
             </Button>
           ) : (
-            <Button variant="outline" size="sm" onClick={handleStartEdit}>
-              <Pencil className="h-4 w-4 mr-1" />
-              Editar informe
-            </Button>
+            <>
+              <Button variant="outline" size="icon" onClick={handleStartEdit} title="Editar informe">
+                <Pencil className="h-4 w-4" />
+              </Button>
+              {onDeleteClick && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={onDeleteClick}
+                  className="text-zinc-500 hover:text-red-600"
+                  title="Eliminar proyecto"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              )}
+            </>
           )}
         </div>
       )}
