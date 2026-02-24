@@ -146,10 +146,29 @@ export const SetFilterCustom = forwardRef(function SetFilterCustom(
           if (values.size === 0) return false;
           if (values.size === uniqueValues.length) return true;
           const rowData = params.node?.data ?? params.data;
-          if (!rowData) return false;
+          if (!rowData) {
+            if (typeof process !== "undefined" && process.env.NODE_ENV === "development") {
+              console.warn("[SetFilter] doesFilterPass: sin rowData", { hasNode: !!params.node, hasData: !!params.data, paramsKeys: Object.keys(params) });
+            }
+            return false;
+          }
           const v = getValue({ data: rowData });
           const s = formatCellValue(v);
-          return values.has(s);
+          const passes = values.has(s);
+          if (typeof process !== "undefined" && process.env.NODE_ENV === "development" && !(window as unknown as { __setFilterDebugLogged?: boolean }).__setFilterDebugLogged) {
+            (window as unknown as { __setFilterDebugLogged?: boolean }).__setFilterDebugLogged = true;
+            console.log("[SetFilter] doesFilterPass debug", {
+              field,
+              colId,
+              rowDataKeys: Object.keys(rowData).slice(0, 15),
+              valorEnDatos: rowData[field],
+              valorFormateado: s,
+              tipoValor: typeof v,
+              valoresFiltro: Array.from(values),
+              passes,
+            });
+          }
+          return passes;
         },
         isFilterActive(): boolean {
           const values = getEffectiveApplied();
