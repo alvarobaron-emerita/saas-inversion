@@ -1,6 +1,6 @@
 "use client";
 
-import { forwardRef, useImperativeHandle, useMemo, useState, useCallback, useEffect } from "react";
+import { forwardRef, useImperativeHandle, useMemo, useState, useRef, useCallback, useEffect } from "react";
 
 function formatCellValue(v: unknown): string {
   if (v == null) return "";
@@ -31,6 +31,7 @@ export const SetFilterCustom = forwardRef(function SetFilterCustom(
     setModel: (model: SetFilterModel) => void;
     doesFilterPass: (params: { node: { data?: Record<string, unknown> }; colDef?: { field?: string }; api?: { getValue: (colId: string, node: { data?: Record<string, unknown> }) => unknown } }) => boolean;
     isFilterActive: () => boolean;
+    getModelAsString?: (model: SetFilterModel) => string;
   }>
 ) {
   const { api, column, colDef, filterChangedCallback, valueGetter, values: valuesFromParent } = props;
@@ -41,6 +42,7 @@ export const SetFilterCustom = forwardRef(function SetFilterCustom(
   const [selected, setSelected] = useState<Set<string>>(() => new Set(valuesFromParent ?? []));
   const [search, setSearch] = useState("");
   const [appliedModel, setAppliedModel] = useState<Set<string> | null>(null);
+  const appliedModelRef = useRef<Set<string> | null>(null);
 
   const getValue = useCallback(
     (node: { data?: Record<string, unknown> }) => {
@@ -55,6 +57,7 @@ export const SetFilterCustom = forwardRef(function SetFilterCustom(
     if (valuesFromParent !== undefined) {
       setUniqueValues(valuesFromParent);
       setSelected(new Set(valuesFromParent));
+      appliedModelRef.current = null;
       setAppliedModel(null);
       return;
     }
@@ -67,6 +70,7 @@ export const SetFilterCustom = forwardRef(function SetFilterCustom(
     const sorted = Array.from(values).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
     setUniqueValues(sorted);
     setSelected(new Set(sorted));
+    appliedModelRef.current = null;
     setAppliedModel(null);
   }, [valuesFromParent, api, getValue]);
 
@@ -94,53 +98,69 @@ export const SetFilterCustom = forwardRef(function SetFilterCustom(
   }, []);
 
   const apply = useCallback(() => {
-    setAppliedModel(new Set(selected));
+    const next = new Set(selected);
+    appliedModelRef.current = next;
+    setAppliedModel(next);
     filterChangedCallback({ apply: true });
   }, [selected, filterChangedCallback]);
 
   const reset = useCallback(() => {
     setSelected(new Set(uniqueValues));
+    appliedModelRef.current = null;
     setAppliedModel(null);
     filterChangedCallback({ apply: true });
   }, [uniqueValues, filterChangedCallback]);
 
   useImperativeHandle(
     ref,
-    () => ({
-      getModel(): SetFilterModel {
-        if (appliedModel === null && selected.size === uniqueValues.length) return null;
-        const values = appliedModel !== null ? appliedModel : selected;
-        if (values.size === 0) return { filterType: "set", values: [] };
-        if (values.size === uniqueValues.length) return null;
-        return { filterType: "set", values: Array.from(values) };
-      },
-      setModel(model: SetFilterModel) {
-        if (model === null) {
-          setSelected(new Set(uniqueValues));
-          setAppliedModel(null);
-          return;
-        }
-        const set = new Set(model.values);
-        setSelected(set);
-        setAppliedModel(set);
-      },
-      doesFilterPass(params: {
-        node: { data?: Record<string, unknown> };
-        colDef?: { field?: string };
-        api?: { getValue: (colId: string, node: { data?: Record<string, unknown> }) => unknown };
-      }): boolean {
-        const values = appliedModel ?? selected;
-        if (values.size === 0) return false;
-        if (values.size === uniqueValues.length) return true;
-        const v = getValue(params.node);
-        const s = formatCellValue(v);
-        return values.has(s);
-      },
-      isFilterActive(): boolean {
-        const values = appliedModel ?? selected;
-        return values.size < uniqueValues.length;
-      },
-    }),
+    () => {
+      const getEffectiveApplied = () => appliedModelRef.current ?? appliedModel;
+      return {
+        getModel(): SetFilterModel {
+          const values = getEffectiveApplied();
+          if (values === null && selected.size === uniqueValues.length) return null;
+          const set = values ?? selected;
+          if (set.size === 0) return { filterType: "set", values: [] };
+          if (set.size === uniqueValues.length) return null;
+          return { filterType: "set", values: Array.from(set) };
+        },
+        setModel(model: SetFilterModel) {
+          if (model === null) {
+            setSelected(new Set(uniqueValues));
+            appliedModelRef.current = null;
+            setAppliedModel(null);
+            return;
+          }
+          const set = new Set(model.values);
+          setSelected(set);
+          appliedModelRef.current = set;
+          setAppliedModel(set);
+        },
+        doesFilterPass(params: {
+          node: { data?: Record<string, unknown> };
+          colDef?: { field?: string };
+          api?: { getValue: (colId: string, node: { data?: Record<string, unknown> }) => unknown };
+        }): boolean {
+          const values = getEffectiveApplied() ?? selected;
+          if (values.size === 0) return false;
+          if (values.size === uniqueValues.length) return true;
+          const v = getValue(params.node);
+          const s = formatCellValue(v);
+          return values.has(s);
+        },
+        isFilterActive(): boolean {
+          const values = getEffectiveApplied();
+          if (values === null) return false;
+          return values.size < uniqueValues.length;
+        },
+        getModelAsString(model: SetFilterModel): string {
+          if (model == null) return "";
+          if (model.values.length === 0) return "Vacío";
+          if (model.values.length <= 3) return model.values.join(", ");
+          return `${model.values.length} valores`;
+        },
+      };
+    },
     [appliedModel, selected, uniqueValues, getValue]
   );
 
