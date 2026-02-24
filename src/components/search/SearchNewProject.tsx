@@ -14,8 +14,18 @@ async function uploadFile(file: File, projectId?: string) {
     body: form,
   });
   if (!res.ok) {
-    const err = await res.json();
-    throw new Error(err.error || "Error al subir");
+    const text = await res.text();
+    let message = "Error al subir";
+    try {
+      const err = JSON.parse(text) as { error?: string };
+      if (err?.error) message = err.error;
+    } catch {
+      if (res.status === 504)
+        message =
+          "Error al subir. Si el archivo es grande, el servidor puede haber tardado demasiado.";
+      else if (text) message = text.slice(0, 200);
+    }
+    throw new Error(message);
   }
   return res.json();
 }

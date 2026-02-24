@@ -5,6 +5,10 @@ import { parseExcel, parseCSV } from "@/lib/excel/parser";
 import { collapseMarkBlocks } from "@/lib/excel/collapseMarkBlocks";
 import { normalizeSabi } from "@/lib/excel/normalizer";
 
+const ROW_BATCH_SIZE = 500;
+
+export const maxDuration = 300;
+
 export async function POST(request: Request) {
   try {
     const formData = await request.formData();
@@ -53,29 +57,29 @@ export async function POST(request: Request) {
     const normalized = normalizeSabi(parsed);
 
     const cols = normalized.columns;
-    for (let i = 0; i < cols.length; i++) {
-      const header = originalHeaders[i] ?? cols[i];
+    const columnData = cols.map((col, i) => {
+      const header = originalHeaders[i] ?? col;
       const headerWidth = Math.max(120, Math.min(600, header.length * 10));
-      await prisma.searchColumn.create({
-        data: {
-          projectId: targetProjectId,
-          field: cols[i],
-          header,
-          type: "text",
-          width: headerWidth,
-        },
-      });
-    }
+      return {
+        projectId: targetProjectId,
+        field: col,
+        header,
+        type: "text" as const,
+        width: headerWidth,
+      };
+    });
+    await prisma.searchColumn.createMany({ data: columnData });
 
     const rows = normalized.rows;
-    for (let i = 0; i < rows.length; i++) {
-      await prisma.searchRow.create({
-        data: {
+    for (let offset = 0; offset < rows.length; offset += ROW_BATCH_SIZE) {
+      const batch = rows.slice(offset, offset + ROW_BATCH_SIZE);
+      await prisma.searchRow.createMany({
+        data: batch.map((row, i) => ({
           projectId: targetProjectId,
-          rowIndex: i,
+          rowIndex: offset + i,
           status: "inbox",
-          data: rows[i] as object,
-        },
+          data: row as object,
+        })),
       });
     }
 
