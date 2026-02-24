@@ -5,6 +5,7 @@ import { AgGridReact } from "ag-grid-react";
 import type { AgGridReact as AgGridReactType } from "ag-grid-react";
 import type { ColDef } from "ag-grid-community";
 import { evaluateFormula } from "@/lib/formulas/evaluator";
+import { SetFilterCustom } from "./SetFilterCustom";
 import "ag-grid-community/styles/ag-grid.css";
 import "ag-grid-community/styles/ag-theme-alpine.css";
 
@@ -114,8 +115,7 @@ export const DataGrid = forwardRef<AgGridReactType, DataGridProps>(function Data
           minWidth: 50,
           flex: 0,
           resizable: true,
-          filter: "agSetColumnFilter",
-          filterParams: { buttons: ["reset", "apply"] },
+          filter: SetFilterCustom,
           sortable: true,
           pinned: col.pinned === "left" || col.pinned === "right" ? col.pinned : undefined,
           hide: col.hidden === true,
