@@ -206,15 +206,6 @@ export function ColumnEditor({ projectId, onColumnAdded, existingColumns = [] }:
           {type === "ai" && (
             <>
               <div>
-                <Label>Prompt para el LLM</Label>
-                <Textarea
-                  placeholder="Ej: Resume en una frase el perfil de esta empresa"
-                  value={prompt}
-                  onChange={(e) => setPrompt(e.target.value)}
-                  className="mt-1 min-h-[80px]"
-                />
-              </div>
-              <div>
                 <Label className="mb-2 block">Formato de salida</Label>
                 <div className="space-y-2 text-sm">
                   <label className="flex items-center gap-2">
@@ -235,9 +226,57 @@ export function ColumnEditor({ projectId, onColumnAdded, existingColumns = [] }:
                       onChange={() => setOutputStyle("rating_and_reason")}
                       className="rounded border-zinc-300"
                     />
-                    Rating (1–10) + explicación (se crean dos columnas)
+                    Dos columnas (rating + explicación)
                   </label>
                 </div>
+                {outputStyle === "rating_and_reason" && (
+                  <div className="mt-3 rounded-md border border-zinc-200 bg-zinc-50 p-3 space-y-3 text-sm">
+                    <p className="text-zinc-700">
+                      Se crearán 2 columnas a partir de un único prompt. El LLM responderá en JSON y cada valor se guardará en su columna.
+                    </p>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left border-collapse text-xs">
+                        <thead>
+                          <tr className="border-b border-zinc-200">
+                            <th className="py-1.5 pr-2 font-medium text-zinc-600">Columna</th>
+                            <th className="py-1.5 pr-2 font-medium text-zinc-600">Nombre que verás</th>
+                            <th className="py-1.5 font-medium text-zinc-600">Tipo / Contenido</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr className="border-b border-zinc-100">
+                            <td className="py-1.5 pr-2">1</td>
+                            <td className="py-1.5 pr-2">{header.trim() || "(nombre de columna)"}</td>
+                            <td className="py-1.5">Número del 1 al 10 (rating)</td>
+                          </tr>
+                          <tr>
+                            <td className="py-1.5 pr-2">2</td>
+                            <td className="py-1.5 pr-2">{header.trim() ? `${header.trim()} (motivo)` : "(nombre de columna) (motivo)"}</td>
+                            <td className="py-1.5">Texto (explicación breve)</td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                    <p className="text-zinc-600 text-xs">
+                      El mismo prompt se aplica a ambas; el modelo devuelve un número y una explicación. Formato de respuesta esperado:
+                    </p>
+                    <pre className="rounded bg-zinc-100 p-2 text-xs font-mono overflow-x-auto">
+                      {`{ "rating": 7, "explanation": "Breve explicación en una frase." }`}
+                    </pre>
+                    <p className="text-zinc-500 text-xs">
+                      El LLM debe responder solo con un JSON así; el sistema lo divide en las dos columnas.
+                    </p>
+                  </div>
+                )}
+              </div>
+              <div>
+                <Label>Prompt para el LLM</Label>
+                <Textarea
+                  placeholder="Ej: Resume en una frase el perfil de esta empresa"
+                  value={prompt}
+                  onChange={(e) => setPrompt(e.target.value)}
+                  className="mt-1 min-h-[80px]"
+                />
               </div>
               <div>
                 <Label className="mb-2 block">Datos para el LLM</Label>
@@ -297,7 +336,7 @@ export function ColumnEditor({ projectId, onColumnAdded, existingColumns = [] }:
                       }}
                       className="rounded border-zinc-300"
                     />
-                    Todas las columnas; el LLM elige lo relevante
+                    IA elige las columnas relevantes
                   </label>
                   {contextMode === "relevant" && existingColumns.length > 0 && (
                     <div className="ml-6 space-y-2">

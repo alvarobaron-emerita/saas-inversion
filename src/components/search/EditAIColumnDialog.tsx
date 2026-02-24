@@ -140,9 +140,38 @@ export function EditAIColumnDialog({
         </DialogHeader>
         <div className="space-y-4 py-4">
           {column.outputStyle === "rating_and_reason" && (
-            <p className="text-sm text-zinc-600 rounded bg-zinc-100 p-2">
-              Esta columna genera dos columnas: el rating (1–10) y la explicación en la columna vinculada. El prompt se aplica a ambas.
-            </p>
+            <div className="rounded-md border border-zinc-200 bg-zinc-50 p-3 space-y-3 text-sm">
+              <p className="text-zinc-700">
+                Esta columna genera 2 columnas a partir de un único prompt. El LLM responde en JSON y cada valor se guarda en su columna.
+              </p>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse text-xs">
+                  <thead>
+                    <tr className="border-b border-zinc-200">
+                      <th className="py-1.5 pr-2 font-medium text-zinc-600">Columna</th>
+                      <th className="py-1.5 pr-2 font-medium text-zinc-600">Nombre</th>
+                      <th className="py-1.5 font-medium text-zinc-600">Tipo / Contenido</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr className="border-b border-zinc-100">
+                      <td className="py-1.5 pr-2">1</td>
+                      <td className="py-1.5 pr-2">{column.header}</td>
+                      <td className="py-1.5">Número del 1 al 10 (rating)</td>
+                    </tr>
+                    <tr>
+                      <td className="py-1.5 pr-2">2</td>
+                      <td className="py-1.5 pr-2">{column.header} (motivo)</td>
+                      <td className="py-1.5">Texto (explicación breve)</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <p className="text-zinc-600 text-xs">Formato de respuesta esperado:</p>
+              <pre className="rounded bg-zinc-100 p-2 text-xs font-mono overflow-x-auto">
+                {`{ "rating": 7, "explanation": "Breve explicación en una frase." }`}
+              </pre>
+            </div>
           )}
           <div>
             <Label>Prompt para el LLM</Label>
@@ -211,7 +240,7 @@ export function EditAIColumnDialog({
                   }}
                   className="rounded border-zinc-300"
                 />
-                Todas las columnas; el LLM elige lo relevante
+                IA elige las columnas relevantes
               </label>
               {contextMode === "relevant" && existingColumns.length > 0 && (
                 <div className="ml-6 space-y-2">
