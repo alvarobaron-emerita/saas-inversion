@@ -72,12 +72,23 @@ export function DiscoveryNewAnalysis() {
             if (line.startsWith("data: ")) {
               try {
                 const data = JSON.parse(line.slice(6));
-                if (data.type === "section_start") {
+                if (data.type === "sections_list") {
                   setProgress({
-                    sectionName: data.sectionName,
-                    index: data.index,
-                    total: data.total,
+                    sectionNames: data.sectionNames,
+                    index: 0,
+                    total: data.sectionNames.length,
                   });
+                } else if (data.type === "section_start") {
+                  setProgress((prev) =>
+                    prev
+                      ? { ...prev, index: data.index, total: data.total, sectionName: data.sectionName }
+                      : {
+                          sectionNames: [data.sectionName],
+                          index: data.index,
+                          total: data.total,
+                          sectionName: data.sectionName,
+                        }
+                  );
                 } else if (data.type === "report") {
                   finalReport = data.report;
                 } else if (data.type === "error") {

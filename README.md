@@ -1,5 +1,7 @@
 # SaaS de Inversión - Search Fund
 
+Repositorio de producción: **GitHub Emerita** (`github.com/alvarobaron-emerita/saas-inversion`). El remote `origin` debe apuntar ahí para deploy.
+
 Plataforma para Search Funds que ayuda en la adquisición de PYMEs en España. Incluye dos herramientas:
 
 - **Sectores**: Análisis de sectores con LLM

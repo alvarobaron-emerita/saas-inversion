@@ -57,6 +57,10 @@ export async function POST(request: Request) {
       async start(controller) {
         const results: ReportSectionResult[] = [];
         try {
+          sendEvent(controller, {
+            type: "sections_list",
+            sectionNames: sectionsToUse.map((s) => s.name),
+          });
           for (let i = 0; i < sectionsToUse.length; i++) {
             const section = sectionsToUse[i];
             sendEvent(controller, {
