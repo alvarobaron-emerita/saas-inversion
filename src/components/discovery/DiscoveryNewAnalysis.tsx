@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { AnalysisCanvas } from "./AnalysisCanvas";
+import { AnalysisCanvas, type AnalysisProgress } from "./AnalysisCanvas";
 import type { ReportContent } from "@/types/discovery";
 
 export function DiscoveryNewAnalysis() {
@@ -18,12 +18,14 @@ export function DiscoveryNewAnalysis() {
   const [context, setContext] = useState("");
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [report, setReport] = useState<ReportContent | null>(null);
+  const [progress, setProgress] = useState<AnalysisProgress | null>(null);
 
   const handleAnalyze = async () => {
     if (!sector.trim()) return;
 
     setIsAnalyzing(true);
     setReport(null);
+    setProgress(null);
 
     try {
       const createRes = await fetch("/api/discovery/projects", {
@@ -50,20 +52,60 @@ export function DiscoveryNewAnalysis() {
       });
 
       if (!analyzeRes.ok) {
-        const err = await analyzeRes.json();
+        const err = await analyzeRes.json().catch(() => ({ error: "Error en el análisis" }));
         throw new Error(err.error || "Error en el análisis");
       }
 
-      const { report: newReport } = await analyzeRes.json();
-      setReport(newReport);
-      queryClient.invalidateQueries({ queryKey: ["discovery-projects"] });
-      router.push(`/discovery/${project.id}`);
+      const reader = analyzeRes.body?.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let finalReport: ReportContent | null = null;
+
+      if (reader) {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split("\n\n");
+          buffer = lines.pop() ?? "";
+          for (const line of lines) {
+            if (line.startsWith("data: ")) {
+              try {
+                const data = JSON.parse(line.slice(6));
+                if (data.type === "section_start") {
+                  setProgress({
+                    sectionName: data.sectionName,
+                    index: data.index,
+                    total: data.total,
+                  });
+                } else if (data.type === "report") {
+                  finalReport = data.report;
+                } else if (data.type === "error") {
+                  throw new Error(data.error);
+                }
+              } catch (e) {
+                if (e instanceof SyntaxError) continue;
+                throw e;
+              }
+            }
+          }
+        }
+      }
+
+      if (finalReport) {
+        setReport(finalReport);
+        queryClient.invalidateQueries({ queryKey: ["discovery-projects"] });
+        router.push(`/discovery/${project.id}`);
+      } else {
+        throw new Error("No se recibió el informe");
+      }
     } catch (err) {
       console.error(err);
       const msg = err instanceof Error ? err.message : "Error en el análisis";
       alert(`Error: ${msg}. Comprueba que GEMINI_API_KEY esté configurada.`);
     } finally {
       setIsAnalyzing(false);
+      setProgress(null);
     }
   };
 
@@ -114,7 +156,7 @@ export function DiscoveryNewAnalysis() {
           {isAnalyzing ? "Analizando..." : "ARRANCAR ANÁLISIS"}
         </Button>
       </div>
-      <AnalysisCanvas report={report} isLoading={isAnalyzing} />
+      <AnalysisCanvas report={report} isLoading={isAnalyzing} progress={progress} />
     </div>
   );
 }

@@ -56,3 +56,25 @@ export async function PATCH(
     return NextResponse.json({ error: "Error updating project" }, { status: 500 });
   }
 }
+
+export async function DELETE(
+  _request: Request,
+  { params }: { params: Promise<{ projectId: string }> }
+) {
+  try {
+    const { projectId } = await params;
+    const project = await prisma.discoveryProject.findUnique({
+      where: { id: projectId },
+    });
+    if (!project) {
+      return NextResponse.json({ error: "Project not found" }, { status: 404 });
+    }
+    await prisma.discoveryProject.delete({
+      where: { id: projectId },
+    });
+    return new NextResponse(null, { status: 204 });
+  } catch (error) {
+    console.error("Discovery project DELETE error:", error);
+    return NextResponse.json({ error: "Error deleting project" }, { status: 500 });
+  }
+}

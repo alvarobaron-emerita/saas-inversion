@@ -3,35 +3,18 @@ interface SectionSimple {
   prompt: string;
 }
 
-interface KPISimple {
-  name: string;
-  min?: number;
-  max?: number;
-  unit?: string;
-}
-
 export function buildSectionPrompt(
   section: SectionSimple,
   sector: string,
   context: string,
-  thesis: string,
-  kpis: KPISimple[]
+  thesis: string
 ): string {
-  const kpiDesc = kpis.length
-    ? `\n\nKPIs objetivo a verificar (el sector debe encajar en estos rangos):\n${kpis
-        .map(
-          (k) =>
-            `- ${k.name}${k.min != null ? `: min ${k.min}` : ""}${k.max != null ? `, max ${k.max}` : ""}${k.unit ? ` ${k.unit}` : ""}`
-        )
-        .join("\n")}`
-    : "";
-
   return `Eres un analista de inversiones experto en Search Funds y adquisición de PYMEs en España.
 
 ## Contexto
 - Sector/nicho a analizar: ${sector}
 ${context ? `- Contexto adicional: ${context}` : ""}
-${thesis ? `- Tesis de inversión (target): ${thesis}` : ""}${kpiDesc}
+${thesis ? `- Tesis de inversión (target): ${thesis}` : ""}
 
 ## Tarea
 ${section.prompt}

@@ -16,16 +16,6 @@ function generateId() {
   return `section-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
 }
 
-const DEFAULT_SECTIONS: ReportSection[] = [
-  { id: generateId(), name: "Resumen Ejecutivo", prompt: "Escribe un resumen ejecutivo del sector." },
-  { id: generateId(), name: "Unit Economics y Financieros", prompt: "Analiza los unit economics y aspectos financieros típicos del sector." },
-  { id: generateId(), name: "Tamaño y Segmentación", prompt: "Describe el tamaño del mercado y su segmentación." },
-  { id: generateId(), name: "Cadena de Valor", prompt: "Explica la cadena de valor del sector." },
-  { id: generateId(), name: "Estructura Competitiva", prompt: "Analiza la estructura competitiva." },
-  { id: generateId(), name: "Regulación y Riesgos", prompt: "Identifica regulación relevante y riesgos." },
-  { id: generateId(), name: "Oportunidades", prompt: "Señala oportunidades de inversión basadas en la tesis." },
-];
-
 export function ReportSectionsEditor({ sections, onChange }: ReportSectionsEditorProps) {
   const addSection = () => {
     onChange([
@@ -44,10 +34,6 @@ export function ReportSectionsEditor({ sections, onChange }: ReportSectionsEdito
     onChange(sections.filter((s) => s.id !== id));
   };
 
-  const loadDefaults = () => {
-    onChange(DEFAULT_SECTIONS.map((s) => ({ ...s, id: generateId() })));
-  };
-
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-4">
@@ -57,15 +43,10 @@ export function ReportSectionsEditor({ sections, onChange }: ReportSectionsEdito
             Cada sección tiene un prompt que el LLM usará para generar el análisis.
           </p>
         </div>
-        <div className="flex gap-2">
-          <Button type="button" variant="outline" size="sm" onClick={loadDefaults}>
-            Cargar por defecto
-          </Button>
-          <Button type="button" variant="outline" size="sm" onClick={addSection}>
-            <Plus className="h-4 w-4 mr-1" />
-            Añadir sección
-          </Button>
-        </div>
+        <Button type="button" variant="outline" size="sm" onClick={addSection}>
+          <Plus className="h-4 w-4 mr-1" />
+          Añadir sección
+        </Button>
       </div>
       <div className="space-y-4">
         {sections.map((section, idx) => (

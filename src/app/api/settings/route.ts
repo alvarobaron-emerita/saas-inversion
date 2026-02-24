@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db/prisma";
+import { DEFAULT_REPORT_SECTIONS } from "@/lib/discovery-defaults";
 import type { SettingsData } from "@/types/settings";
 
 export async function GET() {
@@ -14,10 +15,12 @@ export async function GET() {
         },
       });
     }
+    const reportSections = (settings.reportSections ?? []) as unknown as SettingsData["reportSections"];
+    const effectiveReportSections = reportSections.length === 0 ? DEFAULT_REPORT_SECTIONS : reportSections;
     return NextResponse.json({
       thesis: settings.thesis,
       kpis: (settings.kpis ?? []) as unknown as SettingsData["kpis"],
-      reportSections: (settings.reportSections ?? []) as unknown as SettingsData["reportSections"],
+      reportSections: effectiveReportSections,
     });
   } catch (error) {
     console.error("Settings GET error:", error);

@@ -4,7 +4,6 @@ import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { ThesisEditor } from "@/components/settings/ThesisEditor";
-import { KPIConfig } from "@/components/settings/KPIConfig";
 import { ReportSectionsEditor } from "@/components/settings/ReportSectionsEditor";
 import type { SettingsData } from "@/types/settings";
 
@@ -56,7 +55,7 @@ export function DiscoverySettings() {
         <div>
           <h1 className="text-2xl font-semibold text-zinc-900">Ajustes</h1>
           <p className="mt-1 text-zinc-500">
-            Configura la tesis, KPIs y secciones del informe
+            Configura la tesis y secciones del informe
           </p>
         </div>
         <Button onClick={handleSave} disabled={mutation.isPending}>
@@ -66,18 +65,10 @@ export function DiscoverySettings() {
 
       <div className="space-y-8">
         <div className="rounded-lg border border-zinc-200 bg-white p-6">
-          <div className="space-y-6">
-            <ThesisEditor
-              value={formData.thesis}
-              onChange={(thesis) => setFormData((prev) => prev ? { ...prev, thesis } : prev)}
-            />
-            <div className="border-t border-zinc-200 pt-6">
-              <KPIConfig
-                kpis={formData.kpis}
-                onChange={(kpis) => setFormData((prev) => prev ? { ...prev, kpis } : prev)}
-              />
-            </div>
-          </div>
+          <ThesisEditor
+            value={formData.thesis}
+            onChange={(thesis) => setFormData((prev) => prev ? { ...prev, thesis } : prev)}
+          />
         </div>
         <div className="rounded-lg border border-zinc-200 bg-white p-6">
           <ReportSectionsEditor
