@@ -15,7 +15,7 @@ async function fetchSettings(): Promise<SettingsData> {
 
 async function saveSettings(data: SettingsData) {
   const res = await fetch("/api/settings", {
-    method: "PUT",
+    method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),
   });

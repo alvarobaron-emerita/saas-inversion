@@ -3,6 +3,8 @@ import { prisma } from "@/lib/db/prisma";
 import { DEFAULT_REPORT_SECTIONS } from "@/lib/discovery-defaults";
 import type { SettingsData } from "@/types/settings";
 
+export const dynamic = "force-dynamic";
+
 function normalizeReportSections(raw: unknown): SettingsData["reportSections"] {
   if (Array.isArray(raw) && raw.length > 0) return raw as SettingsData["reportSections"];
   if (Array.isArray(raw)) return [];
@@ -52,36 +54,62 @@ export async function GET() {
   }
 }
 
+async function handleSave(request: Request) {
+  const body: SettingsData = await request.json();
+  let settings = await prisma.settings.findFirst({ orderBy: { id: "asc" } });
+  if (!settings) {
+    settings = await prisma.settings.create({
+      data: {
+        thesis: body.thesis ?? "",
+        kpis: JSON.parse(JSON.stringify(body.kpis ?? [])),
+        reportSections: JSON.parse(JSON.stringify(body.reportSections ?? [])),
+      },
+    });
+  } else {
+    settings = await prisma.settings.update({
+      where: { id: settings.id },
+      data: {
+        thesis: body.thesis ?? settings.thesis,
+        kpis: JSON.parse(JSON.stringify(body.kpis ?? settings.kpis ?? [])),
+        reportSections: JSON.parse(JSON.stringify(body.reportSections ?? settings.reportSections ?? [])),
+      },
+    });
+  }
+  return {
+    thesis: settings.thesis ?? "",
+    kpis: (settings.kpis ?? []) as unknown as SettingsData["kpis"],
+    reportSections: (settings.reportSections ?? []) as unknown as SettingsData["reportSections"],
+  };
+}
+
 export async function PUT(request: Request) {
   try {
-    const body: SettingsData = await request.json();
-    let settings = await prisma.settings.findFirst({ orderBy: { id: "asc" } });
-    if (!settings) {
-      settings = await prisma.settings.create({
-        data: {
-          thesis: body.thesis ?? "",
-          kpis: JSON.parse(JSON.stringify(body.kpis ?? [])),
-          reportSections: JSON.parse(JSON.stringify(body.reportSections ?? [])),
-        },
-      });
-    } else {
-      settings = await prisma.settings.update({
-        where: { id: settings.id },
-        data: {
-          thesis: body.thesis ?? settings.thesis,
-          kpis: JSON.parse(JSON.stringify(body.kpis ?? settings.kpis ?? [])),
-          reportSections: JSON.parse(JSON.stringify(body.reportSections ?? settings.reportSections ?? [])),
-        },
-      });
-    }
-    const payload = {
-      thesis: settings.thesis ?? "",
-      kpis: (settings.kpis ?? []) as unknown as SettingsData["kpis"],
-      reportSections: (settings.reportSections ?? []) as unknown as SettingsData["reportSections"],
-    };
+    const payload = await handleSave(request);
     return NextResponse.json(payload);
   } catch (error) {
     console.error("Settings PUT error:", error);
     return NextResponse.json({ error: "Error saving settings" }, { status: 500 });
   }
+}
+
+/** POST también para guardar; en Vercel con Deployment Protection PUT a veces devuelve 405. */
+export async function POST(request: Request) {
+  try {
+    const payload = await handleSave(request);
+    return NextResponse.json(payload);
+  } catch (error) {
+    console.error("Settings POST error:", error);
+    return NextResponse.json({ error: "Error saving settings" }, { status: 500 });
+  }
+}
+
+export async function OPTIONS() {
+  return new NextResponse(null, {
+    status: 204,
+    headers: {
+      Allow: "GET, PUT, POST, OPTIONS",
+      "Access-Control-Allow-Methods": "GET, PUT, POST, OPTIONS",
+      "Access-Control-Allow-Headers": "Content-Type",
+    },
+  });
 }
