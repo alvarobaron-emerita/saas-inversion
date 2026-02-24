@@ -354,6 +354,7 @@ export const DataGrid = forwardRef<AgGridReactType, DataGridProps>(function Data
         columnDefs={columnDefs}
         defaultColDef={defaultColDef}
         getRowId={getRowId}
+        reactiveCustomComponents
         domLayout="normal"
         enableCellTextSelection
         suppressRowClickSelection

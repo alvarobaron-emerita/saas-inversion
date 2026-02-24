@@ -26,7 +26,12 @@ interface SetFilterCustomProps {
 
 export const SetFilterCustom = forwardRef(function SetFilterCustom(
   props: SetFilterCustomProps,
-  ref: React.Ref<{ getModel: () => SetFilterModel; setModel: (model: SetFilterModel) => void; doesFilterPass: (params: { node: { data?: Record<string, unknown> }; colDef?: { field?: string }; api?: { getValue: (colId: string, node: { data?: Record<string, unknown> }) => unknown } }) => boolean }>
+  ref: React.Ref<{
+    getModel: () => SetFilterModel;
+    setModel: (model: SetFilterModel) => void;
+    doesFilterPass: (params: { node: { data?: Record<string, unknown> }; colDef?: { field?: string }; api?: { getValue: (colId: string, node: { data?: Record<string, unknown> }) => unknown } }) => boolean;
+    isFilterActive: () => boolean;
+  }>
 ) {
   const { api, column, colDef, filterChangedCallback, valueGetter, values: valuesFromParent } = props;
   const colId = column.getColId();
@@ -130,6 +135,10 @@ export const SetFilterCustom = forwardRef(function SetFilterCustom(
         const v = getValue(params.node);
         const s = formatCellValue(v);
         return values.has(s);
+      },
+      isFilterActive(): boolean {
+        const values = appliedModel ?? selected;
+        return values.size < uniqueValues.length;
       },
     }),
     [appliedModel, selected, uniqueValues, getValue]
