@@ -39,7 +39,10 @@ export function DiscoverySettings() {
 
   const mutation = useMutation({
     mutationFn: saveSettings,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["settings"] }),
+    onSuccess: (savedData) => {
+      queryClient.setQueryData(["settings"], savedData);
+      queryClient.invalidateQueries({ queryKey: ["settings"] });
+    },
   });
 
   if (isLoading) return <div className="p-8">Cargando...</div>;

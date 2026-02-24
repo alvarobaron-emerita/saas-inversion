@@ -5,7 +5,7 @@ import type { SettingsData } from "@/types/settings";
 
 export async function GET() {
   try {
-    let settings = await prisma.settings.findFirst();
+    let settings = await prisma.settings.findFirst({ orderBy: { id: "asc" } });
     if (!settings) {
       settings = await prisma.settings.create({
         data: {
@@ -18,7 +18,7 @@ export async function GET() {
     const reportSections = (settings.reportSections ?? []) as unknown as SettingsData["reportSections"];
     const effectiveReportSections = reportSections.length === 0 ? DEFAULT_REPORT_SECTIONS : reportSections;
     return NextResponse.json({
-      thesis: settings.thesis,
+      thesis: settings.thesis ?? "",
       kpis: (settings.kpis ?? []) as unknown as SettingsData["kpis"],
       reportSections: effectiveReportSections,
     });
@@ -31,7 +31,7 @@ export async function GET() {
 export async function PUT(request: Request) {
   try {
     const body: SettingsData = await request.json();
-    let settings = await prisma.settings.findFirst();
+    let settings = await prisma.settings.findFirst({ orderBy: { id: "asc" } });
     if (!settings) {
       settings = await prisma.settings.create({
         data: {
@@ -50,11 +50,14 @@ export async function PUT(request: Request) {
         },
       });
     }
-    return NextResponse.json({
-      thesis: settings.thesis,
-      kpis: settings.kpis,
-      reportSections: settings.reportSections,
-    });
+    const reportSections = (settings.reportSections ?? []) as unknown as SettingsData["reportSections"];
+    const effectiveReportSections = reportSections.length === 0 ? DEFAULT_REPORT_SECTIONS : reportSections;
+    const payload = {
+      thesis: settings.thesis ?? "",
+      kpis: (settings.kpis ?? []) as unknown as SettingsData["kpis"],
+      reportSections: effectiveReportSections,
+    };
+    return NextResponse.json(payload);
   } catch (error) {
     console.error("Settings PUT error:", error);
     return NextResponse.json({ error: "Error saving settings" }, { status: 500 });

@@ -129,7 +129,7 @@ export function AnalysisCanvas({ report, isLoading, progress, projectId, onRepor
             </Button>
           ) : (
             <>
-              <Button variant="outline" size="icon" onClick={handleStartEdit} title="Editar informe">
+              <Button variant="ghost" size="icon" onClick={handleStartEdit} className="text-zinc-500" title="Editar informe">
                 <Pencil className="h-4 w-4" />
               </Button>
               {onDeleteClick && (
