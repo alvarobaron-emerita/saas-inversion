@@ -3,8 +3,14 @@
 import { useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { DataGrid } from "./DataGrid";
 import { FileUploadZone } from "./FileUploadZone";
 import { ColumnEditor } from "./ColumnEditor";
@@ -45,6 +51,8 @@ export function SearchProjectView({ projectId }: { projectId: string }) {
   const [selectedColumnIds, setSelectedColumnIds] = useState<string[]>([]);
   const [runAIProgress, setRunAIProgress] = useState<string | null>(null);
   const [editAIColumnId, setEditAIColumnId] = useState<string | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const { data: project, isLoading: projectLoading } = useQuery({
     queryKey: ["search-project", projectId],
@@ -112,6 +120,25 @@ export function SearchProjectView({ projectId }: { projectId: string }) {
   const clearSelection = () => {
     setSelectedRowIds([]);
     gridRef.current?.api?.deselectAll();
+  };
+
+  const handleDeleteProject = async () => {
+    setIsDeleting(true);
+    try {
+      const res = await fetch(`/api/search/projects/${projectId}`, {
+        method: "DELETE",
+      });
+      if (!res.ok) throw new Error("Error al eliminar");
+      queryClient.invalidateQueries({ queryKey: ["search-project", projectId] });
+      queryClient.invalidateQueries({ queryKey: ["search-projects"] });
+      setDeleteDialogOpen(false);
+      router.push("/search/new");
+    } catch (e) {
+      console.error(e);
+      alert("No se pudo eliminar el proyecto.");
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   const CONCURRENCY = 2;
@@ -251,6 +278,32 @@ export function SearchProjectView({ projectId }: { projectId: string }) {
 
   return (
     <div className="flex h-full flex-col">
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Eliminar proyecto</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-zinc-600">
+            ¿Eliminar este proyecto? No se puede deshacer.
+          </p>
+          <div className="flex justify-end gap-2 mt-4">
+            <Button
+              variant="outline"
+              onClick={() => setDeleteDialogOpen(false)}
+              disabled={isDeleting}
+            >
+              Cancelar
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDeleteProject}
+              disabled={isDeleting}
+            >
+              {isDeleting ? "Eliminando..." : "Eliminar"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
       <div className="flex items-center justify-between gap-4 border-b border-zinc-200 bg-white px-6 py-4">
         <div className="flex items-center gap-4">
           <Button variant="ghost" size="icon" onClick={() => router.push("/search/new")}>
@@ -258,8 +311,18 @@ export function SearchProjectView({ projectId }: { projectId: string }) {
           </Button>
           <h1 className="text-lg font-semibold text-zinc-900">{project.name}</h1>
         </div>
-        {hasData && (
-          <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setDeleteDialogOpen(true)}
+            className="text-zinc-500 hover:text-red-600"
+            title="Eliminar proyecto"
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+          {hasData && (
+            <>
             <ColumnsPinEditor
               columns={(gridData?.columns ?? []).map((c: {
                 id: string;
@@ -333,8 +396,9 @@ export function SearchProjectView({ projectId }: { projectId: string }) {
                 header: c.header,
               }))}
             />
-          </div>
-        )}
+            </>
+          )}
+        </div>
       </div>
 
       {!hasData ? (

@@ -85,6 +85,16 @@ export const DataGrid = forwardRef<AgGridReactType, DataGridProps>(function Data
 
   const sortedColumns = useMemo(() => sortColumnsByPinned(columns), [columns]);
 
+  const formatCellValue = useCallback((v: unknown): string => {
+    if (v == null) return "";
+    if (Array.isArray(v)) {
+      if (v.length === 0) return "";
+      return "[" + (v as (string | number)[]).join("; ") + "]";
+    }
+    if (typeof v === "object") return JSON.stringify(v);
+    return String(v);
+  }, []);
+
   const columnDefs: ColDef[] = useMemo(
     () => [
       ...(onSelectionChanged ? [checkboxColumnDef] : []),
@@ -104,11 +114,19 @@ export const DataGrid = forwardRef<AgGridReactType, DataGridProps>(function Data
           minWidth: 50,
           flex: 0,
           resizable: true,
-          filter: true,
+          filter: "agSetColumnFilter",
+          filterParams: { buttons: ["reset", "apply"] },
           sortable: true,
           pinned: col.pinned === "left" || col.pinned === "right" ? col.pinned : undefined,
           hide: col.hidden === true,
           headerClass: isSelected ? "ag-column-selected" : undefined,
+          valueFormatter: (params) => formatCellValue(params.value),
+          valueParser: (params) => {
+            const n = params.newValue;
+            if (n === undefined || n === null) return null;
+            if (typeof n === "string") return n;
+            return formatCellValue(n);
+          },
         };
         if (col.type === "formula" && col.formula) {
           base.valueGetter = (params) => {
@@ -143,7 +161,7 @@ export const DataGrid = forwardRef<AgGridReactType, DataGridProps>(function Data
         return base;
       }),
     ],
-    [sortedColumns, onColumnPinChange, onSelectionChanged, selectedColumnIds, onColumnVisible]
+    [sortedColumns, formatCellValue, onColumnPinChange, onSelectionChanged, selectedColumnIds, onColumnVisible]
   );
 
   const onColumnResizedCallback = useCallback(
@@ -244,19 +262,17 @@ export const DataGrid = forwardRef<AgGridReactType, DataGridProps>(function Data
 
   const getRowId = useCallback((params: { data: { _id: string } }) => params.data._id, []);
 
-  const formatCellValue = useCallback((v: unknown): string => {
-    if (Array.isArray(v)) {
-      if (v.length === 0) return "";
-      return "[" + (v as (string | number)[]).join("; ") + "]";
-    }
-    return v != null ? String(v) : "";
-  }, []);
-
   const defaultColDef = useMemo<ColDef>(
     () => ({
       flex: 1,
       minWidth: 80,
       valueFormatter: (params) => formatCellValue(params.value),
+      valueParser: (params) => {
+        const n = params.newValue;
+        if (n === undefined || n === null) return null;
+        if (typeof n === "string") return n;
+        return formatCellValue(n);
+      },
     }),
     [formatCellValue]
   );
