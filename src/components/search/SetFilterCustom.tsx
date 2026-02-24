@@ -20,18 +20,20 @@ interface SetFilterCustomProps {
   colDef: { field?: string };
   filterChangedCallback: (options?: { apply?: boolean }) => void;
   valueGetter?: (node: { data?: Record<string, unknown> }) => unknown;
+  /** Valores únicos precalculados (p. ej. desde el padre). Si se pasan, el filtro no usa api.forEachNode y abre al instante. */
+  values?: string[];
 }
 
 export const SetFilterCustom = forwardRef(function SetFilterCustom(
   props: SetFilterCustomProps,
   ref: React.Ref<{ getModel: () => SetFilterModel; setModel: (model: SetFilterModel) => void; doesFilterPass: (params: { node: { data?: Record<string, unknown> }; colDef?: { field?: string }; api?: { getValue: (colId: string, node: { data?: Record<string, unknown> }) => unknown } }) => boolean }>
 ) {
-  const { api, column, colDef, filterChangedCallback, valueGetter } = props;
+  const { api, column, colDef, filterChangedCallback, valueGetter, values: valuesFromParent } = props;
   const colId = column.getColId();
   const field = colDef.field ?? colId;
 
-  const [uniqueValues, setUniqueValues] = useState<string[]>([]);
-  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [uniqueValues, setUniqueValues] = useState<string[]>(() => valuesFromParent ?? []);
+  const [selected, setSelected] = useState<Set<string>>(() => new Set(valuesFromParent ?? []));
   const [search, setSearch] = useState("");
   const [appliedModel, setAppliedModel] = useState<Set<string> | null>(null);
 
@@ -45,6 +47,12 @@ export const SetFilterCustom = forwardRef(function SetFilterCustom(
   );
 
   useEffect(() => {
+    if (valuesFromParent !== undefined) {
+      setUniqueValues(valuesFromParent);
+      setSelected(new Set(valuesFromParent));
+      setAppliedModel(null);
+      return;
+    }
     const values = new Set<string>();
     api.forEachNode((node) => {
       const v = getValue(node);
@@ -55,7 +63,7 @@ export const SetFilterCustom = forwardRef(function SetFilterCustom(
     setUniqueValues(sorted);
     setSelected(new Set(sorted));
     setAppliedModel(null);
-  }, [api, getValue]);
+  }, [valuesFromParent, api, getValue]);
 
   const filteredValues = useMemo(() => {
     if (!search.trim()) return uniqueValues;
@@ -162,7 +170,9 @@ export const SetFilterCustom = forwardRef(function SetFilterCustom(
           </button>
         </div>
         <div style={{ fontSize: 11, color: "#71717a", marginBottom: 6 }}>
-          {uniqueValues.length === 0 ? "Cargando…" : `Mostrando ${filteredValues.length} de ${uniqueValues.length}`}
+          {uniqueValues.length === 0
+            ? (valuesFromParent !== undefined ? "Sin datos" : "Cargando…")
+            : `Mostrando ${filteredValues.length} de ${uniqueValues.length}`}
         </div>
         <input
           type="text"
