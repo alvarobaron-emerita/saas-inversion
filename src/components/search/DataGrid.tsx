@@ -46,6 +46,8 @@ interface DataGridProps {
   onHeaderDoubleClick?: (columnId: string) => void;
   /** Al reordenar columnas arrastrando en la tabla, orden actual (ids). Mismo contrato que Editar columnas. */
   onColumnOrderChange?: (orderedColumnIds: string[]) => void;
+  /** Se llama al editar una celda (columnas tipo text). Permite persistir el valor (ej. PATCH a la API). */
+  onCellValueChanged?: (params: { rowId: string; newData: Record<string, CellValue> }) => void;
 }
 
 function sortColumnsByPinned<T extends { pinned?: string | null }>(cols: T[]): T[] {
@@ -81,6 +83,7 @@ export const DataGrid = forwardRef<AgGridReactType, DataGridProps>(function Data
     onColumnVisible,
     onHeaderDoubleClick,
     onColumnOrderChange,
+    onCellValueChanged,
   },
   ref
 ) {
@@ -284,6 +287,22 @@ export const DataGrid = forwardRef<AgGridReactType, DataGridProps>(function Data
     [onColumnOrderChange]
   );
 
+  const onCellValueChangedCallback = useCallback(
+    (event: { data?: Record<string, unknown>; source?: string }) => {
+      if (!onCellValueChanged || event.source === "api") return;
+      const data = event.data as Record<string, unknown> | undefined;
+      if (!data || typeof data._id !== "string") return;
+      const rowId = data._id as string;
+      const newData: Record<string, CellValue> = {};
+      for (const [key, value] of Object.entries(data)) {
+        if (key === "_id" || key === "_rowIndex" || key === "_status") continue;
+        newData[key] = value as CellValue;
+      }
+      onCellValueChanged({ rowId, newData });
+    },
+    [onCellValueChanged]
+  );
+
   const rowData = useMemo(
     () =>
       rows.map((r) => ({
@@ -382,6 +401,7 @@ export const DataGrid = forwardRef<AgGridReactType, DataGridProps>(function Data
         onGridReady={onGridReady}
         onColumnResized={onColumnResized ? onColumnResizedCallback : undefined}
         onColumnMoved={onColumnOrderChange ? onColumnMovedCallback : undefined}
+        onCellValueChanged={onCellValueChanged ? onCellValueChangedCallback : undefined}
         onCellDoubleClicked={onCellDoubleClicked}
       />
       {cellPopover.show && (

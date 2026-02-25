@@ -165,3 +165,29 @@ export async function PATCH(
     );
   }
 }
+
+export async function DELETE(
+  _request: Request,
+  { params }: { params: Promise<{ columnId: string }> }
+) {
+  try {
+    const { columnId } = await params;
+    const existing = await prisma.searchColumn.findUnique({
+      where: { id: columnId },
+      select: { id: true },
+    });
+    if (!existing) {
+      return NextResponse.json({ error: "Column not found" }, { status: 404 });
+    }
+    await prisma.searchColumn.delete({
+      where: { id: columnId },
+    });
+    return new NextResponse(null, { status: 204 });
+  } catch (error) {
+    console.error("Column DELETE error:", error);
+    return NextResponse.json(
+      { error: "Error deleting column" },
+      { status: 500 }
+    );
+  }
+}

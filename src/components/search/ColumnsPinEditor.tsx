@@ -12,7 +12,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Settings2, Pin, PinOff, ArrowLeft, ArrowRight, GripVertical, Search } from "lucide-react";
+import { Settings2, Pin, PinOff, ArrowLeft, ArrowRight, GripVertical, Search, Trash2 } from "lucide-react";
 
 export interface ColumnForPin {
   id: string;
@@ -43,6 +43,8 @@ interface ColumnsPinEditorProps {
   onEditAIColumn?: (columnId: string) => void;
   /** Al guardar un nuevo orden de columnas (array de ids en el orden deseado) */
   onOrderChange?: (orderedColumnIds: string[], options?: { skipRefetch?: boolean }) => Promise<void>;
+  /** Eliminar una columna (columnas añadidas por el usuario: texto, IA, Excel). */
+  onColumnDelete?: (columnId: string) => Promise<void>;
   onClose?: () => void | Promise<void>;
   /** Se llama al abrir el diálogo; si devuelve una promesa, el contenido no se muestra hasta que se resuelva (para refrescar orden desde servidor). */
   onOpen?: () => void | Promise<void>;
@@ -54,6 +56,7 @@ export function ColumnsPinEditor({
   onVisibilityChange,
   onEditAIColumn,
   onOrderChange,
+  onColumnDelete,
   onClose,
   onOpen,
 }: ColumnsPinEditorProps) {
@@ -66,6 +69,7 @@ export function ColumnsPinEditor({
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!open || !onOpen) return;
@@ -421,6 +425,28 @@ export function ColumnsPinEditor({
                     <PinOff className="h-3.5 w-3.5" />
                   </Button>
                 </div>
+                {onColumnDelete && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 w-8 p-0 text-zinc-500 hover:text-red-600"
+                    title="Eliminar columna"
+                    disabled={deletingId === col.id}
+                    onClick={async () => {
+                      if (!confirm(`¿Eliminar la columna "${col.header}"? Los datos de esta columna se perderán.`)) return;
+                      setDeletingId(col.id);
+                      try {
+                        await onColumnDelete(col.id);
+                        setOpen(false);
+                      } finally {
+                        setDeletingId(null);
+                      }
+                    }}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                )}
               </div>
             </div>
             )))}

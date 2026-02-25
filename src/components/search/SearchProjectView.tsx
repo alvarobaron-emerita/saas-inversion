@@ -373,6 +373,14 @@ export function SearchProjectView({ projectId }: { projectId: string }) {
                 }
                 if (!options?.skipRefetch) refetch();
               }}
+              onColumnDelete={async (columnId) => {
+                const res = await fetch(`/api/search/columns/${columnId}`, { method: "DELETE" });
+                if (!res.ok) {
+                  const body = await res.json().catch(() => ({})) as { error?: string };
+                  throw new Error(body.error ?? `Error ${res.status} al eliminar`);
+                }
+                refetch();
+              }}
               onClose={async () => { await refetch(); }}
               onOpen={async () => { await refetch(); }}
             />
@@ -507,6 +515,14 @@ export function SearchProjectView({ projectId }: { projectId: string }) {
                       body: JSON.stringify({ orderedColumnIds }),
                     });
                     if (res.ok) await refetch();
+                  }}
+                  onCellValueChanged={async ({ rowId, newData }) => {
+                    const res = await fetch(`/api/search/rows/${rowId}`, {
+                      method: "PATCH",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ data: newData }),
+                    });
+                    if (res.ok) refetch();
                   }}
                   onHeaderDoubleClick={(columnId) => {
                     const cols =
