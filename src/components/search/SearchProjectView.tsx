@@ -361,20 +361,14 @@ export function SearchProjectView({ projectId }: { projectId: string }) {
                 if (res.ok && !options?.skipRefetch) refetch();
               }}
               onOrderChange={async (orderedColumnIds, options) => {
-                const responses = await Promise.all(
-                  orderedColumnIds.map((columnId, index) =>
-                    fetch(`/api/search/columns/${columnId}`, {
-                      method: "PATCH",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({ sortOrder: index }),
-                    })
-                  )
-                );
-                for (const res of responses) {
-                  if (!res.ok) {
-                    const body = await res.json().catch(() => ({})) as { hint?: string; error?: string };
-                    throw new Error(body.hint ?? body.error ?? `Error ${res.status} al guardar el orden`);
-                  }
+                const res = await fetch(`/api/search/projects/${projectId}/columns/order`, {
+                  method: "PATCH",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ orderedColumnIds }),
+                });
+                if (!res.ok) {
+                  const body = await res.json().catch(() => ({})) as { hint?: string; error?: string };
+                  throw new Error(body.hint ?? body.error ?? `Error ${res.status} al guardar el orden`);
                 }
                 if (!options?.skipRefetch) refetch();
               }}
@@ -505,16 +499,12 @@ export function SearchProjectView({ projectId }: { projectId: string }) {
                     if (res.ok) refetch();
                   }}
                   onColumnOrderChange={async (orderedColumnIds) => {
-                    await Promise.all(
-                      orderedColumnIds.map((columnId, index) =>
-                        fetch(`/api/search/columns/${columnId}`, {
-                          method: "PATCH",
-                          headers: { "Content-Type": "application/json" },
-                          body: JSON.stringify({ sortOrder: index }),
-                        })
-                      )
-                    );
-                    refetch();
+                    const res = await fetch(`/api/search/projects/${projectId}/columns/order`, {
+                      method: "PATCH",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ orderedColumnIds }),
+                    });
+                    if (res.ok) refetch();
                   }}
                   onHeaderDoubleClick={(columnId) => {
                     const cols =
