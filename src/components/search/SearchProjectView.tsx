@@ -360,6 +360,18 @@ export function SearchProjectView({ projectId }: { projectId: string }) {
                 });
                 if (res.ok && !options?.skipRefetch) refetch();
               }}
+              onOrderChange={async (orderedColumnIds, options) => {
+                await Promise.all(
+                  orderedColumnIds.map((columnId, index) =>
+                    fetch(`/api/search/columns/${columnId}`, {
+                      method: "PATCH",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ sortOrder: index }),
+                    })
+                  )
+                );
+                if (!options?.skipRefetch) refetch();
+              }}
               onClose={() => refetch()}
             />
             <EditAIColumnDialog

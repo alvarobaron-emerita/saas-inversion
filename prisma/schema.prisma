@@ -64,6 +64,7 @@ model SearchColumn {
   width            Int?
   pinned           String?       // 'left' | 'right' | null
   hidden           Boolean       @default(false)
+  sortOrder        Int           @default(0)
 }
 
 model Settings {

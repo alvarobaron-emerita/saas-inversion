@@ -24,7 +24,7 @@ export async function GET(request: Request) {
 
     const columns = await prisma.searchColumn.findMany({
       where: { projectId },
-      orderBy: { id: "asc" },
+      orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
     });
 
     const rows = await prisma.searchRow.findMany({

@@ -18,7 +18,7 @@ export async function PATCH(
   try {
     const { columnId } = await params;
     const body = await request.json();
-    const { pinned, width, hidden, prompt, inputColumnIds, useOnlyRelevant, outputStyle, pairColumnId } = body;
+    const { pinned, width, hidden, sortOrder: sortOrderBody, prompt, inputColumnIds, useOnlyRelevant, outputStyle, pairColumnId } = body;
 
     if (pinned !== undefined && !VALID_PINNED.includes(pinned)) {
       return NextResponse.json(
@@ -65,6 +65,12 @@ export async function PATCH(
         { status: 400 }
       );
     }
+    if (sortOrderBody !== undefined && (typeof sortOrderBody !== "number" || sortOrderBody < 0)) {
+      return NextResponse.json(
+        { error: "sortOrder must be a non-negative number" },
+        { status: 400 }
+      );
+    }
 
     // Al ocultar una columna, no puede seguir fijada
     const effectivePinned =
@@ -74,6 +80,7 @@ export async function PATCH(
       ...(effectivePinned !== undefined && { pinned: effectivePinned }),
       ...(width !== undefined && { width }),
       ...(hidden !== undefined && { hidden }),
+      ...(sortOrderBody !== undefined && { sortOrder: sortOrderBody }),
     };
 
     if (hasAIFields(body)) {
@@ -128,6 +135,7 @@ export async function PATCH(
       width: updated.width ?? undefined,
       pinned: updated.pinned,
       hidden: updated.hidden,
+      sortOrder: updated.sortOrder,
     });
   } catch (error) {
     console.error("Column PATCH error:", error);

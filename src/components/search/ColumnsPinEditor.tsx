@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
@@ -11,7 +11,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Settings2, Pin, PinOff, ArrowLeft, ArrowRight } from "lucide-react";
+import { Settings2, Pin, PinOff, ArrowLeft, ArrowRight, GripVertical } from "lucide-react";
 
 export interface ColumnForPin {
   id: string;
@@ -40,6 +40,8 @@ interface ColumnsPinEditorProps {
   ) => Promise<void>;
   /** Al hacer clic en "Editar prompt" en una columna IA */
   onEditAIColumn?: (columnId: string) => void;
+  /** Al guardar un nuevo orden de columnas (array de ids en el orden deseado) */
+  onOrderChange?: (orderedColumnIds: string[], options?: { skipRefetch?: boolean }) => Promise<void>;
   onClose?: () => void;
 }
 
@@ -48,11 +50,14 @@ export function ColumnsPinEditor({
   onPinChange,
   onVisibilityChange,
   onEditAIColumn,
+  onOrderChange,
   onClose,
 }: ColumnsPinEditorProps) {
   const [open, setOpen] = useState(false);
   const [pending, setPending] = useState<Record<string, "left" | "right" | null>>({});
   const [pendingVisibility, setPendingVisibility] = useState<Record<string, boolean>>({});
+  const [pendingOrder, setPendingOrder] = useState<string[] | null>(null);
+  const [draggingId, setDraggingId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   const getPinned = (col: ColumnForPin) =>
@@ -61,12 +66,26 @@ export function ColumnsPinEditor({
   const getVisible = (col: ColumnForPin) =>
     col.id in pendingVisibility ? pendingVisibility[col.id] : !col.hidden;
 
+  const orderedIds = useMemo(() => pendingOrder ?? columns.map((c) => c.id), [pendingOrder, columns]);
+  const displayColumns = useMemo(() => {
+    const byId = new Map(columns.map((c) => [c.id, c]));
+    return orderedIds.map((id) => byId.get(id)).filter(Boolean) as ColumnForPin[];
+  }, [columns, orderedIds]);
+
+  const orderChanged =
+    pendingOrder !== null &&
+    (pendingOrder.length !== columns.length ||
+      pendingOrder.some((id, i) => columns[i]?.id !== id));
+
   const hasChanges =
-    Object.keys(pending).length > 0 || Object.keys(pendingVisibility).length > 0;
+    Object.keys(pending).length > 0 ||
+    Object.keys(pendingVisibility).length > 0 ||
+    orderChanged;
 
   const handleCancel = () => {
     setPending({});
     setPendingVisibility({});
+    setPendingOrder(null);
     setOpen(false);
   };
 
@@ -90,9 +109,14 @@ export function ColumnsPinEditor({
             }
           })()
         : Promise.resolve();
-      await Promise.all([...pinPromises, visibilityPromise]);
+      const orderPromise =
+        orderChanged && onOrderChange
+          ? onOrderChange(orderedIds, { skipRefetch: true })
+          : Promise.resolve();
+      await Promise.all([...pinPromises, visibilityPromise, orderPromise]);
       setPending({});
       setPendingVisibility({});
+      setPendingOrder(null);
       setOpen(false);
       onClose?.();
     } finally {
@@ -140,6 +164,42 @@ export function ColumnsPinEditor({
     setPending((prev) => ({ ...prev, ...nextPin }));
   };
 
+  const handleDragStart = (e: React.DragEvent, columnId: string) => {
+    setDraggingId(columnId);
+    e.dataTransfer.setData("text/plain", columnId);
+    e.dataTransfer.effectAllowed = "move";
+  };
+
+  const handleDragEnd = () => {
+    setDraggingId(null);
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+  };
+
+  const handleDrop = (e: React.DragEvent, dropColumnId: string) => {
+    e.preventDefault();
+    const draggedId = e.dataTransfer.getData("text/plain");
+    if (!draggedId || draggedId === dropColumnId) {
+      setDraggingId(null);
+      return;
+    }
+    const current = pendingOrder ?? columns.map((c) => c.id);
+    const fromIndex = current.indexOf(draggedId);
+    const toIndex = current.indexOf(dropColumnId);
+    if (fromIndex === -1 || toIndex === -1) {
+      setDraggingId(null);
+      return;
+    }
+    const next = [...current];
+    const [removed] = next.splice(fromIndex, 1);
+    next.splice(toIndex, 0, removed);
+    setPendingOrder(next);
+    setDraggingId(null);
+  };
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
@@ -153,7 +213,7 @@ export function ColumnsPinEditor({
           <DialogTitle>Editar columnas</DialogTitle>
         </DialogHeader>
         <p className="text-sm text-zinc-600">
-          Fija columnas al scroll y muestra u oculta columnas. Los cambios de visibilidad y fijado se aplican al pulsar Guardar. El ancho al redimensionar en la tabla se guarda automáticamente.
+          Arrastra para reordenar; fija columnas al scroll y muestra u oculta columnas. Los cambios de orden, visibilidad y fijado se aplican al pulsar Guardar. El ancho al redimensionar en la tabla se guarda automáticamente.
         </p>
 
         {onVisibilityChange && columns.length > 0 && (
@@ -189,9 +249,27 @@ export function ColumnsPinEditor({
         )}
 
         <div className="space-y-3 py-4 max-h-[60vh] overflow-y-auto">
-          {columns.map((col) => (
-            <div key={col.id} className="flex items-center justify-between gap-4">
-              <Label className="flex-1 truncate text-sm font-normal">{col.header}</Label>
+          {displayColumns.map((col) => (
+            <div
+              key={col.id}
+              className={`flex items-center justify-between gap-2 rounded-md border transition-opacity ${
+                draggingId === col.id ? "opacity-50 border-zinc-400 bg-zinc-50" : "border-transparent"
+              }`}
+              onDragOver={handleDragOver}
+              onDrop={(e) => handleDrop(e, col.id)}
+            >
+              {onOrderChange && (
+                <div
+                  className="cursor-grab active:cursor-grabbing touch-none text-zinc-400 hover:text-zinc-600 p-1 rounded hover:bg-zinc-100 shrink-0"
+                  draggable
+                  onDragStart={(e) => handleDragStart(e, col.id)}
+                  onDragEnd={handleDragEnd}
+                  title="Arrastra para reordenar"
+                >
+                  <GripVertical className="h-4 w-4" />
+                </div>
+              )}
+              <Label className="flex-1 truncate text-sm font-normal min-w-0">{col.header}</Label>
               <div className="flex items-center gap-2 flex-wrap justify-end">
                 {col.type === "ai" && onEditAIColumn && (
                   <Button
