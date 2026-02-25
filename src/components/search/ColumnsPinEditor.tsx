@@ -28,7 +28,11 @@ const BULK_CHUNK_SIZE = 15;
 
 interface ColumnsPinEditorProps {
   columns: ColumnForPin[];
-  onPinChange: (columnId: string, pinned: "left" | "right" | null) => Promise<void>;
+  onPinChange: (
+    columnId: string,
+    pinned: "left" | "right" | null,
+    options?: { skipRefetch?: boolean }
+  ) => Promise<void>;
   onVisibilityChange?: (
     columnId: string,
     visible: boolean,
@@ -48,22 +52,44 @@ export function ColumnsPinEditor({
 }: ColumnsPinEditorProps) {
   const [open, setOpen] = useState(false);
   const [pending, setPending] = useState<Record<string, "left" | "right" | null>>({});
+  const [pendingVisibility, setPendingVisibility] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState(false);
-  const [visibilityLoading, setVisibilityLoading] = useState<string | null>(null);
-  const [bulkLoading, setBulkLoading] = useState(false);
 
   const getPinned = (col: ColumnForPin) =>
     col.id in pending ? pending[col.id] : (col.pinned ?? null);
 
-  const hasChanges = Object.keys(pending).length > 0;
+  const getVisible = (col: ColumnForPin) =>
+    col.id in pendingVisibility ? pendingVisibility[col.id] : !col.hidden;
+
+  const hasChanges =
+    Object.keys(pending).length > 0 || Object.keys(pendingVisibility).length > 0;
+
+  const handleCancel = () => {
+    setPending({});
+    setPendingVisibility({});
+    setOpen(false);
+  };
 
   const handleSave = async () => {
+    if (!hasChanges) return;
     setLoading(true);
     try {
       for (const [colId, pinned] of Object.entries(pending)) {
-        await onPinChange(colId, pinned);
+        await onPinChange(colId, pinned, { skipRefetch: true });
+      }
+      if (onVisibilityChange) {
+        const updates = Object.entries(pendingVisibility).map(([id, visible]) => ({ id, visible }));
+        for (let i = 0; i < updates.length; i += BULK_CHUNK_SIZE) {
+          const chunk = updates.slice(i, i + BULK_CHUNK_SIZE);
+          await Promise.all(
+            chunk.map(({ id, visible }) =>
+              onVisibilityChange(id, visible, { skipRefetch: true })
+            )
+          );
+        }
       }
       setPending({});
+      setPendingVisibility({});
       setOpen(false);
       onClose?.();
     } finally {
@@ -71,105 +97,44 @@ export function ColumnsPinEditor({
     }
   };
 
-  const handleVisibilityChange = async (col: ColumnForPin, visible: boolean) => {
-    if (!onVisibilityChange) return;
-    const isPinned = getPinned(col) === "left" || getPinned(col) === "right";
-    if (!visible && isPinned) {
-      const ok = confirm(
-        "La columna está fijada. Se desfijará y se ocultará. ¿Continuar?"
-      );
-      if (!ok) return;
+  const handleVisibilityToggle = (col: ColumnForPin, visible: boolean) => {
+    if (!visible && (getPinned(col) === "left" || getPinned(col) === "right")) {
       setPending((prev) => ({ ...prev, [col.id]: null }));
-      await onPinChange(col.id, null);
     }
-    setVisibilityLoading(col.id);
-    try {
-      await onVisibilityChange(col.id, visible);
-      onClose?.();
-    } finally {
-      setVisibilityLoading(null);
-    }
+    setPendingVisibility((prev) => ({ ...prev, [col.id]: visible }));
   };
 
-  const runBulkVisibility = async (
-    updates: { id: string; visible: boolean }[]
-  ) => {
-    if (!onVisibilityChange || updates.length === 0) return;
-    for (let i = 0; i < updates.length; i += BULK_CHUNK_SIZE) {
-      const chunk = updates.slice(i, i + BULK_CHUNK_SIZE);
-      await Promise.all(
-        chunk.map(({ id, visible }) =>
-          onVisibilityChange(id, visible, { skipRefetch: true })
-        )
-      );
-    }
-    onClose?.();
+  const handleShowAll = () => {
+    const next: Record<string, boolean> = {};
+    columns.forEach((col) => {
+      if (!getVisible(col)) next[col.id] = true;
+    });
+    setPendingVisibility((prev) => ({ ...prev, ...next }));
   };
 
-  const handleShowAll = async () => {
-    if (!onVisibilityChange) return;
-    const toShow = columns.filter((col) => col.hidden).map((col) => ({ id: col.id, visible: true }));
-    if (toShow.length === 0) return;
-    setBulkLoading(true);
-    try {
-      await runBulkVisibility(toShow);
-    } finally {
-      setBulkLoading(false);
-    }
+  const handleHideAll = () => {
+    const nextVis: Record<string, boolean> = {};
+    const nextPin: Record<string, "left" | "right" | null> = {};
+    columns.forEach((col) => {
+      nextVis[col.id] = false;
+      if (getPinned(col) === "left" || getPinned(col) === "right") nextPin[col.id] = null;
+    });
+    setPendingVisibility((prev) => ({ ...prev, ...nextVis }));
+    setPending((prev) => ({ ...prev, ...nextPin }));
   };
 
-  const handleHideAll = async () => {
-    if (!onVisibilityChange) return;
-    const pinnedCount = columns.filter(
-      (col) => getPinned(col) === "left" || getPinned(col) === "right"
-    ).length;
-    if (pinnedCount > 0) {
-      const ok = confirm(
-        `${pinnedCount} columna(s) están fijadas; se desfijarán y ocultarán. ¿Continuar?`
-      );
-      if (!ok) return;
-      for (const col of columns) {
-        const p = getPinned(col);
-        if (p === "left" || p === "right") {
-          setPending((prev) => ({ ...prev, [col.id]: null }));
-          await onPinChange(col.id, null);
-        }
+  const handleInvertVisibility = () => {
+    const nextVis: Record<string, boolean> = {};
+    const nextPin: Record<string, "left" | "right" | null> = {};
+    columns.forEach((col) => {
+      const newVisible = !getVisible(col);
+      nextVis[col.id] = newVisible;
+      if (!newVisible && (getPinned(col) === "left" || getPinned(col) === "right")) {
+        nextPin[col.id] = null;
       }
-    }
-    setBulkLoading(true);
-    try {
-      await runBulkVisibility(columns.map((col) => ({ id: col.id, visible: false })));
-      setPending({});
-    } finally {
-      setBulkLoading(false);
-    }
-  };
-
-  const handleInvertVisibility = async () => {
-    if (!onVisibilityChange) return;
-    const toHide = columns.filter((col) => !col.hidden);
-    const pinnedToHide = toHide.filter(
-      (col) => getPinned(col) === "left" || getPinned(col) === "right"
-    );
-    if (pinnedToHide.length > 0) {
-      const ok = confirm(
-        `${pinnedToHide.length} columna(s) visibles están fijadas; se desfijarán y ocultarán. ¿Continuar?`
-      );
-      if (!ok) return;
-      for (const col of pinnedToHide) {
-        setPending((prev) => ({ ...prev, [col.id]: null }));
-        await onPinChange(col.id, null);
-      }
-    }
-    setBulkLoading(true);
-    try {
-      await runBulkVisibility(
-        columns.map((col) => ({ id: col.id, visible: !!col.hidden }))
-      );
-      setPending({});
-    } finally {
-      setBulkLoading(false);
-    }
+    });
+    setPendingVisibility((prev) => ({ ...prev, ...nextVis }));
+    setPending((prev) => ({ ...prev, ...nextPin }));
   };
 
   return (
@@ -185,7 +150,7 @@ export function ColumnsPinEditor({
           <DialogTitle>Editar columnas</DialogTitle>
         </DialogHeader>
         <p className="text-sm text-zinc-600">
-          Fija columnas al scroll y muestra u oculta columnas. Los cambios de ancho al redimensionar se guardan automáticamente.
+          Fija columnas al scroll y muestra u oculta columnas. Los cambios de visibilidad y fijado se aplican al pulsar Guardar. El ancho al redimensionar en la tabla se guarda automáticamente.
         </p>
 
         {onVisibilityChange && columns.length > 0 && (
@@ -196,7 +161,7 @@ export function ColumnsPinEditor({
               size="sm"
               className="h-8 text-xs"
               onClick={handleShowAll}
-              disabled={bulkLoading || columns.every((c) => !c.hidden)}
+              disabled={columns.every((c) => getVisible(c))}
             >
               Mostrar todas
             </Button>
@@ -205,7 +170,7 @@ export function ColumnsPinEditor({
               size="sm"
               className="h-8 text-xs"
               onClick={handleHideAll}
-              disabled={bulkLoading || columns.every((c) => c.hidden)}
+              disabled={columns.every((c) => !getVisible(c))}
             >
               Ocultar todas
             </Button>
@@ -214,7 +179,6 @@ export function ColumnsPinEditor({
               size="sm"
               className="h-8 text-xs"
               onClick={handleInvertVisibility}
-              disabled={bulkLoading}
             >
               Invertir
             </Button>
@@ -242,11 +206,8 @@ export function ColumnsPinEditor({
                 {onVisibilityChange && (
                   <div className="flex items-center gap-1.5">
                     <Switch
-                      checked={!col.hidden}
-                      disabled={visibilityLoading === col.id}
-                      onCheckedChange={(checked) =>
-                        handleVisibilityChange(col, checked)
-                      }
+                      checked={getVisible(col)}
+                      onCheckedChange={(checked) => handleVisibilityToggle(col, checked)}
                     />
                     <span className="text-xs text-zinc-600 w-12">Visible</span>
                   </div>
@@ -254,9 +215,9 @@ export function ColumnsPinEditor({
                 <div className="flex items-center rounded-md border border-zinc-200 bg-zinc-50 p-0.5">
                   <Button
                     type="button"
-                    variant={getPinned(col) === "left" ? "secondary" : "ghost"}
+                    variant={getPinned(col) === "left" ? "default" : "ghost"}
                     size="sm"
-                    className="h-7 w-7 p-0"
+                    className={`h-7 w-7 p-0 ${getPinned(col) === "left" ? "bg-zinc-800 text-zinc-50 hover:bg-zinc-700" : ""}`}
                     title="Fijar a la izquierda"
                     onClick={() =>
                       setPending((prev) => ({
@@ -272,9 +233,9 @@ export function ColumnsPinEditor({
                   </Button>
                   <Button
                     type="button"
-                    variant={getPinned(col) === "right" ? "secondary" : "ghost"}
+                    variant={getPinned(col) === "right" ? "default" : "ghost"}
                     size="sm"
-                    className="h-7 w-7 p-0"
+                    className={`h-7 w-7 p-0 ${getPinned(col) === "right" ? "bg-zinc-800 text-zinc-50 hover:bg-zinc-700" : ""}`}
                     title="Fijar a la derecha"
                     onClick={() =>
                       setPending((prev) => ({
@@ -290,9 +251,9 @@ export function ColumnsPinEditor({
                   </Button>
                   <Button
                     type="button"
-                    variant={!getPinned(col) ? "secondary" : "ghost"}
+                    variant={!getPinned(col) ? "default" : "ghost"}
                     size="sm"
-                    className="h-7 w-7 p-0"
+                    className={`h-7 w-7 p-0 ${!getPinned(col) ? "bg-zinc-800 text-zinc-50 hover:bg-zinc-700" : ""}`}
                     title="No fijar"
                     onClick={() =>
                       setPending((prev) => ({ ...prev, [col.id]: null }))
@@ -306,7 +267,7 @@ export function ColumnsPinEditor({
           ))}
         </div>
         <div className="flex justify-end gap-2">
-          <Button variant="outline" onClick={() => setOpen(false)}>
+          <Button variant="outline" onClick={handleCancel}>
             Cancelar
           </Button>
           <Button onClick={handleSave} disabled={loading || !hasChanges}>

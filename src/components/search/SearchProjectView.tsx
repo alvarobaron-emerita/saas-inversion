@@ -344,13 +344,13 @@ export function SearchProjectView({ projectId }: { projectId: string }) {
                 useOnlyRelevant: c.useOnlyRelevant,
               }))}
               onEditAIColumn={setEditAIColumnId}
-              onPinChange={async (columnId, pinned) => {
+              onPinChange={async (columnId, pinned, options) => {
                 const res = await fetch(`/api/search/columns/${columnId}`, {
                   method: "PATCH",
                   headers: { "Content-Type": "application/json" },
                   body: JSON.stringify({ pinned }),
                 });
-                if (res.ok) refetch();
+                if (res.ok && !options?.skipRefetch) refetch();
               }}
               onVisibilityChange={async (columnId, visible, options) => {
                 const res = await fetch(`/api/search/columns/${columnId}`, {
