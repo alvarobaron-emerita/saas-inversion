@@ -44,6 +44,8 @@ interface DataGridProps {
   onColumnResized?: (columnId: string, width: number) => void;
   onColumnVisible?: (columnId: string, visible: boolean) => void;
   onHeaderDoubleClick?: (columnId: string) => void;
+  /** Al reordenar columnas arrastrando en la tabla, orden actual (ids). Mismo contrato que Editar columnas. */
+  onColumnOrderChange?: (orderedColumnIds: string[]) => void;
 }
 
 function sortColumnsByPinned<T extends { pinned?: string | null }>(cols: T[]): T[] {
@@ -78,6 +80,7 @@ export const DataGrid = forwardRef<AgGridReactType, DataGridProps>(function Data
     onColumnResized,
     onColumnVisible,
     onHeaderDoubleClick,
+    onColumnOrderChange,
   },
   ref
 ) {
@@ -267,6 +270,20 @@ export const DataGrid = forwardRef<AgGridReactType, DataGridProps>(function Data
     [onSelectionChanged]
   );
 
+  const onColumnMovedCallback = useCallback(
+    (event: { api: { getColumnState?: () => { colId: string }[] }; source: string }) => {
+      if (!onColumnOrderChange || event.source !== "uiColumnMoved") return;
+      const api = event.api as { getColumnState: () => { colId: string }[] };
+      // getColumnState() devuelve el orden actual; ejecutar en siguiente tick por si AG Grid no ha actualizado aún
+      setTimeout(() => {
+        const state = api.getColumnState?.() ?? [];
+        const orderedIds = state.map((s) => s.colId).filter((id) => id !== "_select");
+        if (orderedIds.length > 0) onColumnOrderChange(orderedIds);
+      }, 0);
+    },
+    [onColumnOrderChange]
+  );
+
   const rowData = useMemo(
     () =>
       rows.map((r) => ({
@@ -364,6 +381,7 @@ export const DataGrid = forwardRef<AgGridReactType, DataGridProps>(function Data
         onSelectionChanged={onSelectionChanged ? onSelectionChangedCallback : undefined}
         onGridReady={onGridReady}
         onColumnResized={onColumnResized ? onColumnResizedCallback : undefined}
+        onColumnMoved={onColumnOrderChange ? onColumnMovedCallback : undefined}
         onCellDoubleClicked={onCellDoubleClicked}
       />
       {cellPopover.show && (

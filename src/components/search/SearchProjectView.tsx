@@ -497,6 +497,18 @@ export function SearchProjectView({ projectId }: { projectId: string }) {
                     });
                     if (res.ok) refetch();
                   }}
+                  onColumnOrderChange={async (orderedColumnIds) => {
+                    await Promise.all(
+                      orderedColumnIds.map((columnId, index) =>
+                        fetch(`/api/search/columns/${columnId}`, {
+                          method: "PATCH",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ sortOrder: index }),
+                        })
+                      )
+                    );
+                    refetch();
+                  }}
                   onHeaderDoubleClick={(columnId) => {
                     const cols =
                       selectedColumnIds.length >= 2 && selectedColumnIds.includes(columnId)

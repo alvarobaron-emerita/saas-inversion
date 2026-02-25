@@ -72,16 +72,18 @@ export async function PATCH(
       );
     }
 
-    // Al ocultar una columna, no puede seguir fijada
+    // Al ocultar una columna, no puede seguir fijada. Asegurar que null se persista al desfijar.
     const effectivePinned =
       hidden === true ? null : pinned !== undefined ? pinned : undefined;
 
     const updateData: Parameters<typeof prisma.searchColumn.update>[0]["data"] = {
-      ...(effectivePinned !== undefined && { pinned: effectivePinned }),
       ...(width !== undefined && { width }),
       ...(hidden !== undefined && { hidden }),
       ...(sortOrderBody !== undefined && { sortOrder: sortOrderBody }),
     };
+    if (effectivePinned !== undefined) {
+      (updateData as { pinned?: string | null }).pinned = effectivePinned;
+    }
 
     if (hasAIFields(body)) {
       const column = await prisma.searchColumn.findUnique({
