@@ -121,8 +121,13 @@ export function ColumnsPinEditor({
             }
           })()
         : Promise.resolve();
+      const columnIdSet = new Set(columns.map((c) => c.id));
+      const orderIsComplete =
+        orderedIds.length === columns.length &&
+        orderedIds.every((id) => columnIdSet.has(id)) &&
+        new Set(orderedIds).size === columns.length;
       const orderPromise =
-        orderChanged && onOrderChange
+        orderChanged && onOrderChange && orderIsComplete
           ? onOrderChange(orderedIds, { skipRefetch: true })
           : Promise.resolve();
       await Promise.all([...pinPromises, visibilityPromise, orderPromise]);
@@ -290,14 +295,19 @@ export function ColumnsPinEditor({
               onDragOver={handleDragOver}
               onDrop={(e) => handleDrop(e, col.id)}
             >
-              {onOrderChange && (
+              {onOrderChange && !searchQuery.trim() && (
                 <div
                   className="cursor-grab active:cursor-grabbing touch-none text-zinc-400 hover:text-zinc-600 p-1 rounded hover:bg-zinc-100 shrink-0"
                   draggable
                   onDragStart={(e) => handleDragStart(e, col.id)}
                   onDragEnd={handleDragEnd}
-                  title="Arrastra para reordenar"
+                  title="Arrastra para reordenar (borra la búsqueda para reordenar)"
                 >
+                  <GripVertical className="h-4 w-4" />
+                </div>
+              )}
+              {onOrderChange && searchQuery.trim() && (
+                <div className="shrink-0 w-6 h-4 flex items-center justify-center text-zinc-300" title="Borrar búsqueda para reordenar">
                   <GripVertical className="h-4 w-4" />
                 </div>
               )}

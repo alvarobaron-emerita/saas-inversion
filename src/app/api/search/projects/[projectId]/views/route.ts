@@ -16,11 +16,20 @@ export async function GET(
       return NextResponse.json({ error: "Project not found" }, { status: 404 });
     }
 
-    const [views, countRows] = await Promise.all([
-      prisma.searchView.findMany({
+    let views: Awaited<ReturnType<typeof prisma.searchView.findMany>>;
+    try {
+      views = await prisma.searchView.findMany({
         where: { projectId },
         orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
-      }),
+      });
+    } catch {
+      views = await prisma.searchView.findMany({
+        where: { projectId },
+        orderBy: { name: "asc" },
+      });
+    }
+
+    const [countRows] = await Promise.all([
       prisma.searchRow.groupBy({
         by: ["status"],
         where: { projectId },
