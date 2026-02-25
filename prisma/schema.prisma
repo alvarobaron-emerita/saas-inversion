@@ -73,3 +73,8 @@ model Settings {
   kpis           Json     @default("[]")
   reportSections Json     @default("[]")
 }
+
+model SearchSettings {
+  id             String   @id @default(cuid())
+  defaultColumns Json     @default("[]") // array of column templates (text, formula, ai)
+}
