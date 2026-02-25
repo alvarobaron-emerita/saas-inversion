@@ -1,23 +1,30 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useToolStore, type Tool } from "@/stores/toolStore";
 import { cn } from "@/lib/utils";
 import { Zap, Search } from "lucide-react";
 
-const tools: { id: Tool; label: string; icon: React.ReactNode; description: string }[] = [
-  { id: "discovery", label: "Sectores", icon: <Zap className="h-4 w-4" />, description: "Descubre nuevas oportunidades" },
-  { id: "search", label: "Empresas", icon: <Search className="h-4 w-4" />, description: "Gestiona y analiza datos" },
+const tools: { id: Tool; label: string; icon: React.ReactNode; description: string; path: string }[] = [
+  { id: "discovery", label: "Sectores", icon: <Zap className="h-4 w-4" />, description: "Descubre nuevas oportunidades", path: "/discovery" },
+  { id: "search", label: "Empresas", icon: <Search className="h-4 w-4" />, description: "Gestiona y analiza datos", path: "/search" },
 ];
 
 export function ToolSelector() {
+  const router = useRouter();
   const { activeTool, setActiveTool } = useToolStore();
+
+  const handleSelect = (tool: (typeof tools)[0]) => {
+    setActiveTool(tool.id);
+    router.push(tool.path);
+  };
 
   return (
     <div className="space-y-1">
       {tools.map((tool) => (
         <button
           key={tool.id}
-          onClick={() => setActiveTool(tool.id)}
+          onClick={() => handleSelect(tool)}
           className={cn(
             "flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left transition-colors",
             activeTool === tool.id

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
 import { prisma } from "@/lib/db/prisma";
+import { requireSessionUser } from "@/lib/auth/session";
 import { DEFAULT_REPORT_SECTIONS } from "@/lib/discovery-defaults";
 import { generateAnalysis } from "@/lib/llm/client";
 import { buildSectionPrompt } from "@/lib/llm/prompts/discovery";
@@ -12,6 +13,8 @@ function sendEvent(controller: ReadableStreamDefaultController, data: object) {
 }
 
 export async function POST(request: Request) {
+  const auth = await requireSessionUser(request);
+  if (auth.response) return auth.response;
   try {
     if (!process.env.GEMINI_API_KEY) {
       return NextResponse.json(
@@ -76,7 +79,11 @@ export async function POST(request: Request) {
           }
           await prisma.discoveryProject.update({
             where: { id: projectId },
-            data: { report: results as object },
+            data: {
+              report: results as object,
+              lastAnalyzedById: auth.user.id,
+              lastAnalyzedAt: new Date(),
+            },
           });
           sendEvent(controller, { type: "report", report: results });
         } catch (err) {
