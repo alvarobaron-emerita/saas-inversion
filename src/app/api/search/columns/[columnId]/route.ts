@@ -90,10 +90,14 @@ export async function PATCH(
           }
         : {};
 
+    // Al ocultar una columna, no puede seguir fijada
+    const effectivePinned =
+      hidden === true ? null : pinned !== undefined ? pinned : undefined;
+
     const updated = await prisma.searchColumn.update({
       where: { id: columnId },
       data: {
-        ...(pinned !== undefined && { pinned }),
+        ...(effectivePinned !== undefined && { pinned: effectivePinned }),
         ...(width !== undefined && { width }),
         ...(hidden !== undefined && { hidden }),
         ...aiFields,

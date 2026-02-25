@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import {
   Dialog,
   DialogContent,
@@ -10,7 +11,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Settings2 } from "lucide-react";
+import { Settings2, Pin, PinOff, ArrowLeft, ArrowRight } from "lucide-react";
 
 export interface ColumnForPin {
   id: string;
@@ -43,6 +44,12 @@ export function ColumnsPinEditor({
   const [pending, setPending] = useState<Record<string, "left" | "right" | null>>({});
   const [loading, setLoading] = useState(false);
   const [visibilityLoading, setVisibilityLoading] = useState<string | null>(null);
+  const [bulkLoading, setBulkLoading] = useState(false);
+
+  const getPinned = (col: ColumnForPin) =>
+    col.id in pending ? pending[col.id] : (col.pinned ?? null);
+
+  const hasChanges = Object.keys(pending).length > 0;
 
   const handleSave = async () => {
     setLoading(true);
@@ -58,10 +65,96 @@ export function ColumnsPinEditor({
     }
   };
 
-  const getPinned = (col: ColumnForPin) =>
-    col.id in pending ? pending[col.id] : (col.pinned ?? null);
+  const handleVisibilityChange = async (col: ColumnForPin, visible: boolean) => {
+    if (!onVisibilityChange) return;
+    const isPinned = getPinned(col) === "left" || getPinned(col) === "right";
+    if (!visible && isPinned) {
+      const ok = confirm(
+        "La columna está fijada. Se desfijará y se ocultará. ¿Continuar?"
+      );
+      if (!ok) return;
+      setPending((prev) => ({ ...prev, [col.id]: null }));
+      await onPinChange(col.id, null);
+    }
+    setVisibilityLoading(col.id);
+    try {
+      await onVisibilityChange(col.id, visible);
+      onClose?.();
+    } finally {
+      setVisibilityLoading(null);
+    }
+  };
 
-  const hasChanges = Object.keys(pending).length > 0;
+  const handleShowAll = async () => {
+    if (!onVisibilityChange) return;
+    setBulkLoading(true);
+    try {
+      await Promise.all(
+        columns.map((col) => (col.hidden ? onVisibilityChange(col.id, true) : Promise.resolve()))
+      );
+      onClose?.();
+    } finally {
+      setBulkLoading(false);
+    }
+  };
+
+  const handleHideAll = async () => {
+    if (!onVisibilityChange) return;
+    const pinnedCount = columns.filter(
+      (col) => getPinned(col) === "left" || getPinned(col) === "right"
+    ).length;
+    if (pinnedCount > 0) {
+      const ok = confirm(
+        `${pinnedCount} columna(s) están fijadas; se desfijarán y ocultarán. ¿Continuar?`
+      );
+      if (!ok) return;
+      for (const col of columns) {
+        const p = getPinned(col);
+        if (p === "left" || p === "right") {
+          setPending((prev) => ({ ...prev, [col.id]: null }));
+          await onPinChange(col.id, null);
+        }
+      }
+    }
+    setBulkLoading(true);
+    try {
+      await Promise.all(
+        columns.map((col) => onVisibilityChange(col.id, false))
+      );
+      setPending({});
+      onClose?.();
+    } finally {
+      setBulkLoading(false);
+    }
+  };
+
+  const handleInvertVisibility = async () => {
+    if (!onVisibilityChange) return;
+    const toHide = columns.filter((col) => !col.hidden);
+    const pinnedToHide = toHide.filter(
+      (col) => getPinned(col) === "left" || getPinned(col) === "right"
+    );
+    if (pinnedToHide.length > 0) {
+      const ok = confirm(
+        `${pinnedToHide.length} columna(s) visibles están fijadas; se desfijarán y ocultarán. ¿Continuar?`
+      );
+      if (!ok) return;
+      for (const col of pinnedToHide) {
+        setPending((prev) => ({ ...prev, [col.id]: null }));
+        await onPinChange(col.id, null);
+      }
+    }
+    setBulkLoading(true);
+    try {
+      await Promise.all(
+        columns.map((col) => onVisibilityChange(col.id, !!col.hidden))
+      );
+      setPending({});
+      onClose?.();
+    } finally {
+      setBulkLoading(false);
+    }
+  };
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -73,11 +166,45 @@ export function ColumnsPinEditor({
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Fijar columnas</DialogTitle>
+          <DialogTitle>Editar columnas</DialogTitle>
         </DialogHeader>
         <p className="text-sm text-zinc-600">
           Fija columnas al scroll y muestra u oculta columnas. Los cambios de ancho al redimensionar se guardan automáticamente.
         </p>
+
+        {onVisibilityChange && columns.length > 0 && (
+          <div className="flex flex-wrap items-center gap-2 border-b border-zinc-200 pb-3">
+            <span className="text-xs font-medium text-zinc-500 mr-1">Acciones:</span>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 text-xs"
+              onClick={handleShowAll}
+              disabled={bulkLoading || columns.every((c) => !c.hidden)}
+            >
+              Mostrar todas
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 text-xs"
+              onClick={handleHideAll}
+              disabled={bulkLoading || columns.every((c) => c.hidden)}
+            >
+              Ocultar todas
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 text-xs"
+              onClick={handleInvertVisibility}
+              disabled={bulkLoading}
+            >
+              Invertir
+            </Button>
+          </div>
+        )}
+
         <div className="space-y-3 py-4 max-h-[60vh] overflow-y-auto">
           {columns.map((col) => (
             <div key={col.id} className="flex items-center justify-between gap-4">
@@ -97,40 +224,67 @@ export function ColumnsPinEditor({
                   </Button>
                 )}
                 {onVisibilityChange && (
-                  <label className="flex items-center gap-1.5 text-sm text-zinc-600">
-                    <input
-                      type="checkbox"
+                  <div className="flex items-center gap-1.5">
+                    <Switch
                       checked={!col.hidden}
                       disabled={visibilityLoading === col.id}
-                      onChange={async () => {
-                        setVisibilityLoading(col.id);
-                        try {
-                          await onVisibilityChange(col.id, !!col.hidden);
-                          onClose?.();
-                        } finally {
-                          setVisibilityLoading(null);
-                        }
-                      }}
-                      className="h-4 w-4 rounded border-zinc-300"
+                      onCheckedChange={(checked) =>
+                        handleVisibilityChange(col, checked)
+                      }
                     />
-                    Visible
-                  </label>
+                    <span className="text-xs text-zinc-600 w-12">Visible</span>
+                  </div>
                 )}
-                <select
-                  value={getPinned(col) ?? ""}
-                  onChange={(e) => {
-                    const v = e.target.value;
-                    setPending((prev) => ({
-                      ...prev,
-                      [col.id]: (v === "" ? null : v) as "left" | "right" | null,
-                    }));
-                  }}
-                  className="h-9 w-[140px] rounded-md border border-zinc-200 bg-white px-3 py-1.5 text-sm"
-                >
-                  <option value="">No fijar</option>
-                  <option value="left">Fijar a la izquierda</option>
-                  <option value="right">Fijar a la derecha</option>
-                </select>
+                <div className="flex items-center rounded-md border border-zinc-200 bg-zinc-50 p-0.5">
+                  <Button
+                    type="button"
+                    variant={getPinned(col) === "left" ? "secondary" : "ghost"}
+                    size="sm"
+                    className="h-7 w-7 p-0"
+                    title="Fijar a la izquierda"
+                    onClick={() =>
+                      setPending((prev) => ({
+                        ...prev,
+                        [col.id]: getPinned(col) === "left" ? null : "left",
+                      }))
+                    }
+                  >
+                    <span className="flex items-center gap-0.5">
+                      <Pin className="h-3 w-3" />
+                      <ArrowLeft className="h-3 w-3" />
+                    </span>
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={getPinned(col) === "right" ? "secondary" : "ghost"}
+                    size="sm"
+                    className="h-7 w-7 p-0"
+                    title="Fijar a la derecha"
+                    onClick={() =>
+                      setPending((prev) => ({
+                        ...prev,
+                        [col.id]: getPinned(col) === "right" ? null : "right",
+                      }))
+                    }
+                  >
+                    <span className="flex items-center gap-0.5">
+                      <Pin className="h-3 w-3" />
+                      <ArrowRight className="h-3 w-3" />
+                    </span>
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={!getPinned(col) ? "secondary" : "ghost"}
+                    size="sm"
+                    className="h-7 w-7 p-0"
+                    title="No fijar"
+                    onClick={() =>
+                      setPending((prev) => ({ ...prev, [col.id]: null }))
+                    }
+                  >
+                    <PinOff className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
               </div>
             </div>
           ))}
