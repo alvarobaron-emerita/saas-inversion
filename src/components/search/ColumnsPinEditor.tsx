@@ -43,7 +43,7 @@ interface ColumnsPinEditorProps {
   onEditAIColumn?: (columnId: string) => void;
   /** Al guardar un nuevo orden de columnas (array de ids en el orden deseado) */
   onOrderChange?: (orderedColumnIds: string[], options?: { skipRefetch?: boolean }) => Promise<void>;
-  onClose?: () => void;
+  onClose?: () => void | Promise<void>;
 }
 
 export function ColumnsPinEditor({
@@ -134,12 +134,12 @@ export function ColumnsPinEditor({
           ? onOrderChange(orderedIds, { skipRefetch: true })
           : Promise.resolve();
       await Promise.all([...pinPromises, visibilityPromise, orderPromise]);
+      await Promise.resolve(onClose?.());
       setPending({});
       setPendingVisibility({});
       setPendingOrder(null);
       setSearchQuery("");
       setOpen(false);
-      onClose?.();
     } catch (e) {
       const message = e instanceof Error ? e.message : "Error al guardar";
       setSaveError(message);

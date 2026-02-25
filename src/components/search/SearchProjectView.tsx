@@ -70,6 +70,7 @@ export function SearchProjectView({ projectId }: { projectId: string }) {
     queryKey: ["search-data", projectId, activeTab],
     queryFn: () => fetchData(projectId, activeTab),
     enabled: !!projectId,
+    refetchOnMount: "always",
   });
 
   const handleUpload = async (file: File) => {
@@ -372,7 +373,7 @@ export function SearchProjectView({ projectId }: { projectId: string }) {
                 }
                 if (!options?.skipRefetch) refetch();
               }}
-              onClose={() => refetch()}
+              onClose={async () => { await refetch(); }}
             />
             <EditAIColumnDialog
               open={!!editAIColumnId}
@@ -450,7 +451,7 @@ export function SearchProjectView({ projectId }: { projectId: string }) {
                   />
                 )}
                 <DataGrid
-                  key={`grid-${projectId}-${activeTab}-${(gridData?.columns ?? []).map((c: { pinned?: string | null }) => c.pinned ?? "n").join(",")}`}
+                  key={`grid-${projectId}-${activeTab}-${(gridData?.columns ?? []).map((c: { id?: string; pinned?: string | null }) => `${c.id ?? ""}:${c.pinned ?? "n"}`).join(",")}`}
                   ref={gridRef}
                   columns={gridData?.columns ?? []}
                   rows={gridData?.rows ?? []}
@@ -504,7 +505,7 @@ export function SearchProjectView({ projectId }: { projectId: string }) {
                       headers: { "Content-Type": "application/json" },
                       body: JSON.stringify({ orderedColumnIds }),
                     });
-                    if (res.ok) refetch();
+                    if (res.ok) await refetch();
                   }}
                   onHeaderDoubleClick={(columnId) => {
                     const cols =
