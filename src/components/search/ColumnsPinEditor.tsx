@@ -61,6 +61,7 @@ export function ColumnsPinEditor({
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   const getPinned = (col: ColumnForPin) =>
     col.id in pending ? pending[col.id] : (col.pinned ?? null);
@@ -98,12 +99,14 @@ export function ColumnsPinEditor({
     setPendingVisibility({});
     setPendingOrder(null);
     setSearchQuery("");
+    setSaveError(null);
     setOpen(false);
   };
 
   const handleSave = async () => {
     if (!hasChanges) return;
     setLoading(true);
+    setSaveError(null);
     try {
       const pinPromises = Object.entries(pending).map(([colId, pinned]) =>
         onPinChange(colId, pinned, { skipRefetch: true })
@@ -125,7 +128,7 @@ export function ColumnsPinEditor({
       const orderIsComplete =
         orderedIds.length === columns.length &&
         orderedIds.every((id) => columnIdSet.has(id)) &&
-        new Set(orderedIds).size === columns.length;
+        new Set(orderedIds).size === orderedIds.length;
       const orderPromise =
         orderChanged && onOrderChange && orderIsComplete
           ? onOrderChange(orderedIds, { skipRefetch: true })
@@ -137,6 +140,9 @@ export function ColumnsPinEditor({
       setSearchQuery("");
       setOpen(false);
       onClose?.();
+    } catch (e) {
+      const message = e instanceof Error ? e.message : "Error al guardar";
+      setSaveError(message);
     } finally {
       setLoading(false);
     }
@@ -389,6 +395,11 @@ export function ColumnsPinEditor({
             </div>
             )))}
         </div>
+        {saveError && (
+          <p className="text-sm text-red-600 dark:text-red-400" role="alert">
+            {saveError}
+          </p>
+        )}
         <div className="flex justify-end gap-2">
           <Button variant="outline" onClick={handleCancel}>
             Cancelar

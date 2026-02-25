@@ -361,7 +361,7 @@ export function SearchProjectView({ projectId }: { projectId: string }) {
                 if (res.ok && !options?.skipRefetch) refetch();
               }}
               onOrderChange={async (orderedColumnIds, options) => {
-                await Promise.all(
+                const responses = await Promise.all(
                   orderedColumnIds.map((columnId, index) =>
                     fetch(`/api/search/columns/${columnId}`, {
                       method: "PATCH",
@@ -370,6 +370,12 @@ export function SearchProjectView({ projectId }: { projectId: string }) {
                     })
                   )
                 );
+                for (const res of responses) {
+                  if (!res.ok) {
+                    const body = await res.json().catch(() => ({})) as { hint?: string; error?: string };
+                    throw new Error(body.hint ?? body.error ?? `Error ${res.status} al guardar el orden`);
+                  }
+                }
                 if (!options?.skipRefetch) refetch();
               }}
               onClose={() => refetch()}

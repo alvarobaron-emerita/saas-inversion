@@ -117,8 +117,26 @@ export async function PATCH(
         data: updateData,
       });
     } catch (e) {
+      const err = e as Error & { code?: string };
+      const msg = err?.message ?? String(e);
+      console.error("Column PATCH update failed:", { columnId, updateData, error: msg, code: err?.code });
+
       if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2025") {
         return NextResponse.json({ error: "Column not found" }, { status: 404 });
+      }
+      // Posible columna sortOrder no existente en BD (migración no aplicada)
+      if (
+        typeof msg === "string" &&
+        (msg.includes("sortOrder") || msg.includes("Unknown column") || /column.*does not exist/i.test(msg))
+      ) {
+        return NextResponse.json(
+          {
+            error: "Error updating column",
+            code: "SCHEMA_MIGRATION_NEEDED",
+            hint: "Asegúrate de haber aplicado la migración que añade sortOrder a SearchColumn (ej. 20250225000000_add_column_sort_order).",
+          },
+          { status: 503 }
+        );
       }
       throw e;
     }
