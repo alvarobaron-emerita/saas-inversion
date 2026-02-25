@@ -24,10 +24,16 @@ export interface ColumnForPin {
   useOnlyRelevant?: boolean;
 }
 
+const BULK_CHUNK_SIZE = 15;
+
 interface ColumnsPinEditorProps {
   columns: ColumnForPin[];
   onPinChange: (columnId: string, pinned: "left" | "right" | null) => Promise<void>;
-  onVisibilityChange?: (columnId: string, visible: boolean) => Promise<void>;
+  onVisibilityChange?: (
+    columnId: string,
+    visible: boolean,
+    options?: { skipRefetch?: boolean }
+  ) => Promise<void>;
   /** Al hacer clic en "Editar prompt" en una columna IA */
   onEditAIColumn?: (columnId: string) => void;
   onClose?: () => void;
@@ -85,14 +91,28 @@ export function ColumnsPinEditor({
     }
   };
 
+  const runBulkVisibility = async (
+    updates: { id: string; visible: boolean }[]
+  ) => {
+    if (!onVisibilityChange || updates.length === 0) return;
+    for (let i = 0; i < updates.length; i += BULK_CHUNK_SIZE) {
+      const chunk = updates.slice(i, i + BULK_CHUNK_SIZE);
+      await Promise.all(
+        chunk.map(({ id, visible }) =>
+          onVisibilityChange(id, visible, { skipRefetch: true })
+        )
+      );
+    }
+    onClose?.();
+  };
+
   const handleShowAll = async () => {
     if (!onVisibilityChange) return;
+    const toShow = columns.filter((col) => col.hidden).map((col) => ({ id: col.id, visible: true }));
+    if (toShow.length === 0) return;
     setBulkLoading(true);
     try {
-      await Promise.all(
-        columns.map((col) => (col.hidden ? onVisibilityChange(col.id, true) : Promise.resolve()))
-      );
-      onClose?.();
+      await runBulkVisibility(toShow);
     } finally {
       setBulkLoading(false);
     }
@@ -118,11 +138,8 @@ export function ColumnsPinEditor({
     }
     setBulkLoading(true);
     try {
-      await Promise.all(
-        columns.map((col) => onVisibilityChange(col.id, false))
-      );
+      await runBulkVisibility(columns.map((col) => ({ id: col.id, visible: false })));
       setPending({});
-      onClose?.();
     } finally {
       setBulkLoading(false);
     }
@@ -146,11 +163,10 @@ export function ColumnsPinEditor({
     }
     setBulkLoading(true);
     try {
-      await Promise.all(
-        columns.map((col) => onVisibilityChange(col.id, !!col.hidden))
+      await runBulkVisibility(
+        columns.map((col) => ({ id: col.id, visible: !!col.hidden }))
       );
       setPending({});
-      onClose?.();
     } finally {
       setBulkLoading(false);
     }

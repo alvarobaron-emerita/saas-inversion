@@ -352,13 +352,13 @@ export function SearchProjectView({ projectId }: { projectId: string }) {
                 });
                 if (res.ok) refetch();
               }}
-              onVisibilityChange={async (columnId, visible) => {
+              onVisibilityChange={async (columnId, visible, options) => {
                 const res = await fetch(`/api/search/columns/${columnId}`, {
                   method: "PATCH",
                   headers: { "Content-Type": "application/json" },
                   body: JSON.stringify({ hidden: !visible }),
                 });
-                if (res.ok) refetch();
+                if (res.ok && !options?.skipRefetch) refetch();
               }}
               onClose={() => refetch()}
             />
