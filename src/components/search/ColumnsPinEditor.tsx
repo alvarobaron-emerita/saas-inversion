@@ -11,7 +11,8 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Settings2, Pin, PinOff, ArrowLeft, ArrowRight, GripVertical } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Settings2, Pin, PinOff, ArrowLeft, ArrowRight, GripVertical, Search } from "lucide-react";
 
 export interface ColumnForPin {
   id: string;
@@ -59,6 +60,7 @@ export function ColumnsPinEditor({
   const [pendingOrder, setPendingOrder] = useState<string[] | null>(null);
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const getPinned = (col: ColumnForPin) =>
     col.id in pending ? pending[col.id] : (col.pinned ?? null);
@@ -71,6 +73,15 @@ export function ColumnsPinEditor({
     const byId = new Map(columns.map((c) => [c.id, c]));
     return orderedIds.map((id) => byId.get(id)).filter(Boolean) as ColumnForPin[];
   }, [columns, orderedIds]);
+
+  const filteredColumns = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return displayColumns;
+    return displayColumns.filter(
+      (col) =>
+        col.header.toLowerCase().includes(q) || col.id.toLowerCase().includes(q)
+    );
+  }, [displayColumns, searchQuery]);
 
   const orderChanged =
     pendingOrder !== null &&
@@ -86,6 +97,7 @@ export function ColumnsPinEditor({
     setPending({});
     setPendingVisibility({});
     setPendingOrder(null);
+    setSearchQuery("");
     setOpen(false);
   };
 
@@ -117,6 +129,7 @@ export function ColumnsPinEditor({
       setPending({});
       setPendingVisibility({});
       setPendingOrder(null);
+      setSearchQuery("");
       setOpen(false);
       onClose?.();
     } finally {
@@ -248,8 +261,27 @@ export function ColumnsPinEditor({
           </div>
         )}
 
+        {columns.length > 3 && (
+          <div className="relative border-b border-zinc-200 pb-3">
+            <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" />
+            <Input
+              type="search"
+              placeholder="Buscar columna por nombre..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-8 h-9 text-sm"
+              aria-label="Buscar columna"
+            />
+          </div>
+        )}
+
         <div className="space-y-3 py-4 max-h-[60vh] overflow-y-auto">
-          {displayColumns.map((col) => (
+          {filteredColumns.length === 0 ? (
+            <p className="text-sm text-zinc-500 py-4 text-center">
+              {searchQuery.trim() ? "Ninguna columna coincide con la búsqueda." : "No hay columnas."}
+            </p>
+          ) : (
+            filteredColumns.map((col) => (
             <div
               key={col.id}
               className={`flex items-center justify-between gap-2 rounded-md border transition-opacity ${
@@ -345,7 +377,7 @@ export function ColumnsPinEditor({
                 </div>
               </div>
             </div>
-          ))}
+            )))}
         </div>
         <div className="flex justify-end gap-2">
           <Button variant="outline" onClick={handleCancel}>

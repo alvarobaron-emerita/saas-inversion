@@ -450,6 +450,7 @@ export function SearchProjectView({ projectId }: { projectId: string }) {
                   />
                 )}
                 <DataGrid
+                  key={`grid-${projectId}-${activeTab}-${(gridData?.columns ?? []).map((c: { pinned?: string | null }) => c.pinned ?? "n").join(",")}`}
                   ref={gridRef}
                   columns={gridData?.columns ?? []}
                   rows={gridData?.rows ?? []}
