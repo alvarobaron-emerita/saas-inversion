@@ -30,11 +30,12 @@ interface AnalysisCanvasProps {
 }
 
 export const AnalysisCanvas = forwardRef<AnalysisCanvasRef, AnalysisCanvasProps>(function AnalysisCanvas(
-  { report, isLoading, progress, projectId, onReportSave, onDeleteClick, onEditingChange },
+  { report, isLoading, progress, onReportSave, onEditingChange },
   ref
 ) {
   const [isEditing, setIsEditing] = useState(false);
   const [localReport, setLocalReport] = useState<ReportContent | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- setIsSaving used in handleSave
   const [isSaving, setIsSaving] = useState(false);
   const onEditingChangeRef = useRef(onEditingChange);
   const startEditRef = useRef<() => void>(() => {});
