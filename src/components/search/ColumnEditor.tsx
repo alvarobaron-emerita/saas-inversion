@@ -174,10 +174,11 @@ export function ColumnEditor({ projectId, onColumnAdded, existingColumns = [] }:
           Añadir columna
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
+      <DialogContent className="sm:max-w-md flex flex-col max-h-[90vh]">
+        <DialogHeader className="flex-shrink-0">
           <DialogTitle>Nueva columna</DialogTitle>
         </DialogHeader>
+        <div className="flex-1 min-h-0 overflow-y-auto">
         <div className="space-y-4 py-4">
           <div>
             <Label>Tipo</Label>
@@ -386,17 +387,20 @@ export function ColumnEditor({ projectId, onColumnAdded, existingColumns = [] }:
             </>
           )}
         </div>
-        <Button
-          onClick={handleSubmit}
-          disabled={
-            loading ||
-            (type === "ai" && outputStyle === "rating_and_reason"
-              ? !headerCol1.trim() || !headerCol2.trim()
-              : !header.trim())
-          }
-        >
-          {loading ? "Creando..." : "Crear"}
-        </Button>
+        </div>
+        <div className="flex-shrink-0 pt-4 border-t border-zinc-100 mt-2">
+          <Button
+            onClick={handleSubmit}
+            disabled={
+              loading ||
+              (type === "ai" && outputStyle === "rating_and_reason"
+                ? !headerCol1.trim() || !headerCol2.trim()
+                : !header.trim())
+            }
+          >
+            {loading ? "Creando..." : "Crear"}
+          </Button>
+        </div>
       </DialogContent>
     </Dialog>
   );
