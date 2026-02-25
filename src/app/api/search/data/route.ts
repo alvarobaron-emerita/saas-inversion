@@ -28,7 +28,7 @@ export async function GET(request: Request) {
         where: { projectId },
         orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
       });
-    } catch (orderError) {
+    } catch {
       // Si la columna sortOrder no existe (migración no aplicada en prod), ordenar solo por id
       columns = await prisma.searchColumn.findMany({
         where: { projectId },
