@@ -2,11 +2,13 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db/prisma";
 
 export const dynamic = "force-dynamic";
+// Más tiempo para proyectos con muchas columnas (una sola query, pero validaciones + conexión)
+export const maxDuration = 30;
 
 /**
  * PATCH: actualiza el orden de todas las columnas del proyecto en una sola petición.
  * Body: { orderedColumnIds: string[] }
- * Evita cientos de PATCH individuales que pueden causar 500 en Vercel/DB.
+ * Usa un único UPDATE con unnest para evitar timeout por cientos de round-trips.
  */
 export async function PATCH(
   request: Request,
@@ -51,13 +53,15 @@ export async function PATCH(
       );
     }
 
-    await prisma.$transaction(
-      ids.map((columnId, index) =>
-        prisma.searchColumn.update({
-          where: { id: columnId, projectId },
-          data: { sortOrder: index },
-        })
-      )
+    const sortOrders = ids.map((_, index) => index);
+    await prisma.$executeRawUnsafe(
+      `UPDATE "SearchColumn" AS c
+       SET "sortOrder" = sub.ord
+       FROM (SELECT * FROM unnest($2::text[], $3::int[]) AS t(id, ord)) AS sub
+       WHERE c.id = sub.id AND c."projectId" = $1`,
+      projectId,
+      ids,
+      sortOrders
     );
 
     return NextResponse.json({ ok: true });
