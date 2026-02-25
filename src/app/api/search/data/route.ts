@@ -22,10 +22,19 @@ export async function GET(request: Request) {
       }
     }
 
-    const columns = await prisma.searchColumn.findMany({
-      where: { projectId },
-      orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
-    });
+    let columns: Awaited<ReturnType<typeof prisma.searchColumn.findMany>>;
+    try {
+      columns = await prisma.searchColumn.findMany({
+        where: { projectId },
+        orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
+      });
+    } catch (orderError) {
+      // Si la columna sortOrder no existe (migración no aplicada en prod), ordenar solo por id
+      columns = await prisma.searchColumn.findMany({
+        where: { projectId },
+        orderBy: { id: "asc" },
+      });
+    }
 
     const rows = await prisma.searchRow.findMany({
       where: {
