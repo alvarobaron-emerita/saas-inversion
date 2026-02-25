@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
@@ -44,6 +44,8 @@ interface ColumnsPinEditorProps {
   /** Al guardar un nuevo orden de columnas (array de ids en el orden deseado) */
   onOrderChange?: (orderedColumnIds: string[], options?: { skipRefetch?: boolean }) => Promise<void>;
   onClose?: () => void | Promise<void>;
+  /** Se llama al abrir el diálogo; si devuelve una promesa, el contenido no se muestra hasta que se resuelva (para refrescar orden desde servidor). */
+  onOpen?: () => void | Promise<void>;
 }
 
 export function ColumnsPinEditor({
@@ -53,8 +55,10 @@ export function ColumnsPinEditor({
   onEditAIColumn,
   onOrderChange,
   onClose,
+  onOpen,
 }: ColumnsPinEditorProps) {
   const [open, setOpen] = useState(false);
+  const [syncingColumns, setSyncingColumns] = useState(false);
   const [pending, setPending] = useState<Record<string, "left" | "right" | null>>({});
   const [pendingVisibility, setPendingVisibility] = useState<Record<string, boolean>>({});
   const [pendingOrder, setPendingOrder] = useState<string[] | null>(null);
@@ -62,6 +66,20 @@ export function ColumnsPinEditor({
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [saveError, setSaveError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!open || !onOpen) return;
+    let cancelled = false;
+    (async () => {
+      setSyncingColumns(true);
+      try {
+        await Promise.resolve(onOpen());
+      } finally {
+        if (!cancelled) setSyncingColumns(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [open, onOpen]);
 
   const getPinned = (col: ColumnForPin) =>
     col.id in pending ? pending[col.id] : (col.pinned ?? null);
@@ -224,8 +242,14 @@ export function ColumnsPinEditor({
     setDraggingId(null);
   };
 
+  const handleOpenChange = (newOpen: boolean) => {
+    if (newOpen) setSyncingColumns(true);
+    else setSyncingColumns(false);
+    setOpen(newOpen);
+  };
+
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
         <Button variant="outline" size="sm">
           <Settings2 className="h-4 w-4 mr-2" />
@@ -236,6 +260,12 @@ export function ColumnsPinEditor({
         <DialogHeader>
           <DialogTitle>Editar columnas</DialogTitle>
         </DialogHeader>
+        {syncingColumns ? (
+          <div className="flex items-center justify-center py-12 text-zinc-500 text-sm">
+            Cargando columnas…
+          </div>
+        ) : (
+          <>
         <p className="text-sm text-zinc-600">
           Arrastra para reordenar; fija columnas al scroll y muestra u oculta columnas. Los cambios de orden, visibilidad y fijado se aplican al pulsar Guardar. El ancho al redimensionar en la tabla se guarda automáticamente.
         </p>
@@ -408,6 +438,8 @@ export function ColumnsPinEditor({
             {loading ? "Guardando..." : "Guardar"}
           </Button>
         </div>
+          </>
+        )}
       </DialogContent>
     </Dialog>
   );

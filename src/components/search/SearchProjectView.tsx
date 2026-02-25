@@ -374,6 +374,7 @@ export function SearchProjectView({ projectId }: { projectId: string }) {
                 if (!options?.skipRefetch) refetch();
               }}
               onClose={async () => { await refetch(); }}
+              onOpen={async () => { await refetch(); }}
             />
             <EditAIColumnDialog
               open={!!editAIColumnId}
