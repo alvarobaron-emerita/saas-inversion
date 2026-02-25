@@ -74,20 +74,23 @@ export function ColumnsPinEditor({
     if (!hasChanges) return;
     setLoading(true);
     try {
-      for (const [colId, pinned] of Object.entries(pending)) {
-        await onPinChange(colId, pinned, { skipRefetch: true });
-      }
-      if (onVisibilityChange) {
-        const updates = Object.entries(pendingVisibility).map(([id, visible]) => ({ id, visible }));
-        for (let i = 0; i < updates.length; i += BULK_CHUNK_SIZE) {
-          const chunk = updates.slice(i, i + BULK_CHUNK_SIZE);
-          await Promise.all(
-            chunk.map(({ id, visible }) =>
-              onVisibilityChange(id, visible, { skipRefetch: true })
-            )
-          );
-        }
-      }
+      const pinPromises = Object.entries(pending).map(([colId, pinned]) =>
+        onPinChange(colId, pinned, { skipRefetch: true })
+      );
+      const visibilityPromise = onVisibilityChange
+        ? (async () => {
+            const updates = Object.entries(pendingVisibility).map(([id, visible]) => ({ id, visible }));
+            for (let i = 0; i < updates.length; i += BULK_CHUNK_SIZE) {
+              const chunk = updates.slice(i, i + BULK_CHUNK_SIZE);
+              await Promise.all(
+                chunk.map(({ id, visible }) =>
+                  onVisibilityChange!(id, visible, { skipRefetch: true })
+                )
+              );
+            }
+          })()
+        : Promise.resolve();
+      await Promise.all([...pinPromises, visibilityPromise]);
       setPending({});
       setPendingVisibility({});
       setOpen(false);

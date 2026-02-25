@@ -2,6 +2,11 @@ import { NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db/prisma";
 
+const hasAIFields = (body: Record<string, unknown>) =>
+  ["prompt", "inputColumnIds", "useOnlyRelevant", "outputStyle", "pairColumnId"].some(
+    (k) => body[k] !== undefined
+  );
+
 export const dynamic = "force-dynamic";
 
 const VALID_PINNED = ["left", "right", null] as const;
@@ -61,48 +66,53 @@ export async function PATCH(
       );
     }
 
-    const column = await prisma.searchColumn.findUnique({
-      where: { id: columnId },
-    });
-    if (!column) {
-      return NextResponse.json({ error: "Column not found" }, { status: 404 });
-    }
-
-    const aiFields: {
-      prompt?: string | null;
-      inputColumnIds?: object | typeof Prisma.DbNull;
-      useOnlyRelevant?: boolean;
-      outputStyle?: string | null;
-      pairColumnId?: string | null;
-    } =
-      column.type === "ai"
-        ? {
-            ...(prompt !== undefined && { prompt: prompt ?? null }),
-            ...(inputColumnIds !== undefined && {
-              inputColumnIds:
-                Array.isArray(inputColumnIds) && inputColumnIds.length > 0
-                  ? (inputColumnIds as object)
-                  : Prisma.DbNull,
-            }),
-            ...(useOnlyRelevant !== undefined && { useOnlyRelevant }),
-            ...(outputStyle !== undefined && { outputStyle: outputStyle ?? null }),
-            ...(pairColumnId !== undefined && { pairColumnId: pairColumnId ?? null }),
-          }
-        : {};
-
     // Al ocultar una columna, no puede seguir fijada
     const effectivePinned =
       hidden === true ? null : pinned !== undefined ? pinned : undefined;
 
-    const updated = await prisma.searchColumn.update({
-      where: { id: columnId },
-      data: {
-        ...(effectivePinned !== undefined && { pinned: effectivePinned }),
-        ...(width !== undefined && { width }),
-        ...(hidden !== undefined && { hidden }),
-        ...aiFields,
-      },
-    });
+    const updateData: Parameters<typeof prisma.searchColumn.update>[0]["data"] = {
+      ...(effectivePinned !== undefined && { pinned: effectivePinned }),
+      ...(width !== undefined && { width }),
+      ...(hidden !== undefined && { hidden }),
+    };
+
+    if (hasAIFields(body)) {
+      const column = await prisma.searchColumn.findUnique({
+        where: { id: columnId },
+      });
+      if (!column) {
+        return NextResponse.json({ error: "Column not found" }, { status: 404 });
+      }
+      const aiFields =
+        column.type === "ai"
+          ? {
+              ...(prompt !== undefined && { prompt: prompt ?? null }),
+              ...(inputColumnIds !== undefined && {
+                inputColumnIds:
+                  Array.isArray(inputColumnIds) && inputColumnIds.length > 0
+                    ? (inputColumnIds as object)
+                    : Prisma.DbNull,
+              }),
+              ...(useOnlyRelevant !== undefined && { useOnlyRelevant }),
+              ...(outputStyle !== undefined && { outputStyle: outputStyle ?? null }),
+              ...(pairColumnId !== undefined && { pairColumnId: pairColumnId ?? null }),
+            }
+          : {};
+      Object.assign(updateData, aiFields);
+    }
+
+    let updated: Awaited<ReturnType<typeof prisma.searchColumn.update>>;
+    try {
+      updated = await prisma.searchColumn.update({
+        where: { id: columnId },
+        data: updateData,
+      });
+    } catch (e) {
+      if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2025") {
+        return NextResponse.json({ error: "Column not found" }, { status: 404 });
+      }
+      throw e;
+    }
 
     return NextResponse.json({
       id: updated.id,
