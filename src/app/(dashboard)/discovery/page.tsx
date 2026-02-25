@@ -51,9 +51,12 @@ export default function DiscoveryPage() {
         </div>
 
         <div className="flex items-center gap-4">
-          <div className="rounded-lg border border-zinc-200 bg-white px-4 py-2">
-            <span className="text-sm text-zinc-500">Total análisis</span>
-            <p className="text-xl font-semibold text-zinc-900">{isLoading ? "…" : total}</p>
+          <div className="rounded-xl bg-zinc-50 border border-zinc-100 px-5 py-4 min-w-[140px] shadow-sm">
+            <div className="flex items-center gap-2 text-zinc-500 text-xs font-medium uppercase tracking-wider mb-1">
+              <Zap className="h-3.5 w-3.5" />
+              Total análisis
+            </div>
+            <p className="text-2xl font-bold text-zinc-900 tabular-nums">{isLoading ? "…" : total}</p>
           </div>
           <Button onClick={() => router.push("/discovery/new")} size="lg">
             <Plus className="h-4 w-4 mr-2" />

@@ -18,7 +18,7 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen bg-[#1A2C3D] flex flex-col items-center justify-center p-6">
-      <h1 className="text-3xl font-semibold text-white tracking-widest mb-8">
+      <h1 className="text-3xl font-bold text-white tracking-widest mb-8">
         EMERITA
       </h1>
       <div className="w-full max-w-md rounded-2xl bg-white shadow-lg p-8 flex flex-col items-center gap-6">

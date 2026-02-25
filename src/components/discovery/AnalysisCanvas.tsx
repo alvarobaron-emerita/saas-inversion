@@ -1,11 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { forwardRef, useState, useEffect, useImperativeHandle, useRef } from "react";
 import type { ReportContent } from "@/types/discovery";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
-import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Pencil, Save, Trash2, Check, Circle, Loader2 } from "lucide-react";
+import { Check, Circle, Loader2 } from "lucide-react";
 import { ReportSectionDisplay } from "./ReportSection";
 
 export type AnalysisProgress = {
@@ -15,6 +14,11 @@ export type AnalysisProgress = {
   total: number;
 };
 
+export interface AnalysisCanvasRef {
+  startEdit: () => void;
+  save: () => Promise<void>;
+}
+
 interface AnalysisCanvasProps {
   report: ReportContent | null;
   isLoading?: boolean;
@@ -22,14 +26,20 @@ interface AnalysisCanvasProps {
   projectId?: string;
   onReportSave?: (report: ReportContent) => Promise<void>;
   onDeleteClick?: () => void;
+  onEditingChange?: (isEditing: boolean) => void;
 }
 
-export function AnalysisCanvas({ report, isLoading, progress, projectId, onReportSave, onDeleteClick }: AnalysisCanvasProps) {
+export const AnalysisCanvas = forwardRef<AnalysisCanvasRef, AnalysisCanvasProps>(function AnalysisCanvas(
+  { report, isLoading, progress, projectId, onReportSave, onDeleteClick, onEditingChange },
+  ref
+) {
   const [isEditing, setIsEditing] = useState(false);
   const [localReport, setLocalReport] = useState<ReportContent | null>(null);
   const [isSaving, setIsSaving] = useState(false);
-
-  const canEdit = Boolean(projectId && onReportSave && report && report.length > 0);
+  const onEditingChangeRef = useRef(onEditingChange);
+  const startEditRef = useRef<() => void>(() => {});
+  const saveRef = useRef<() => Promise<void>>(async () => {});
+  onEditingChangeRef.current = onEditingChange;
 
   useEffect(() => {
     if (report && isEditing) {
@@ -40,7 +50,9 @@ export function AnalysisCanvas({ report, isLoading, progress, projectId, onRepor
   const handleStartEdit = () => {
     if (report) setLocalReport(report.map((s) => ({ ...s })));
     setIsEditing(true);
+    onEditingChangeRef.current?.(true);
   };
+  startEditRef.current = handleStartEdit;
 
   const handleSectionChange = (index: number, content: string) => {
     setLocalReport((prev) => {
@@ -57,6 +69,7 @@ export function AnalysisCanvas({ report, isLoading, progress, projectId, onRepor
     try {
       await onReportSave(localReport);
       setIsEditing(false);
+      onEditingChangeRef.current?.(false);
     } catch (e) {
       console.error(e);
       alert("Error al guardar el informe.");
@@ -64,6 +77,12 @@ export function AnalysisCanvas({ report, isLoading, progress, projectId, onRepor
       setIsSaving(false);
     }
   };
+  saveRef.current = handleSave;
+
+  useImperativeHandle(ref, () => ({
+    startEdit: () => startEditRef.current(),
+    save: () => saveRef.current(),
+  }), []);
 
   if (isLoading) {
     const names =
@@ -153,34 +172,7 @@ export function AnalysisCanvas({ report, isLoading, progress, projectId, onRepor
 
   return (
     <div className="flex flex-1 flex-col overflow-hidden bg-white">
-      {canEdit && (
-        <div className="flex items-center justify-end gap-2 border-b border-zinc-200 px-6 py-2 bg-zinc-50/50">
-          {isEditing ? (
-            <Button size="sm" onClick={handleSave} disabled={isSaving}>
-              <Save className="h-4 w-4 mr-1" />
-              {isSaving ? "Guardando..." : "Guardar"}
-            </Button>
-          ) : (
-            <>
-              <Button variant="ghost" size="icon" onClick={handleStartEdit} className="text-zinc-500" title="Editar informe">
-                <Pencil className="h-4 w-4" />
-              </Button>
-              {onDeleteClick && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={onDeleteClick}
-                  className="text-zinc-500 hover:text-red-600"
-                  title="Eliminar proyecto"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              )}
-            </>
-          )}
-        </div>
-      )}
-      <div className="flex-1 overflow-auto p-8">
+      <div className="flex-1 overflow-auto pt-4 px-8 pb-8">
         <div className="mx-auto max-w-3xl">
           {isEditing && localReport ? (
             localReport.map((section, idx) => (
@@ -204,4 +196,4 @@ export function AnalysisCanvas({ report, isLoading, progress, projectId, onRepor
       </div>
     </div>
   );
-}
+});

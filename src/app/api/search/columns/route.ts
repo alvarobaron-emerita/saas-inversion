@@ -38,6 +38,12 @@ export async function POST(request: Request) {
     }
 
     const headerWidth = Math.max(120, Math.min(600, (header as string).length * 10));
+    const { _max } = await prisma.searchColumn.aggregate({
+      where: { projectId },
+      _max: { sortOrder: true },
+    });
+    const nextSortOrder = ((_max?.sortOrder ?? -1) + 1);
+
     const col = await prisma.searchColumn.create({
       data: {
         projectId,
@@ -53,6 +59,7 @@ export async function POST(request: Request) {
         ...(type === "ai" && outputStyle != null && { outputStyle }),
         ...(type === "ai" && pairColumnId != null && typeof pairColumnId === "string" && { pairColumnId }),
         width: headerWidth,
+        sortOrder: nextSortOrder,
       },
     });
 
