@@ -36,6 +36,8 @@ export function ColumnEditor({ projectId, onColumnAdded, existingColumns = [] }:
   const [prompt, setPrompt] = useState("");
   const [formula, setFormula] = useState("");
   const [outputStyle, setOutputStyle] = useState<"single" | "rating_and_reason">("single");
+  const [headerCol1, setHeaderCol1] = useState("");
+  const [headerCol2, setHeaderCol2] = useState("");
   const [contextMode, setContextMode] = useState<ContextMode>("all");
   const [selectedColumnIds, setSelectedColumnIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
@@ -70,8 +72,12 @@ export function ColumnEditor({ projectId, onColumnAdded, existingColumns = [] }:
   };
 
   const handleSubmit = async () => {
-    if (!header.trim()) return;
-    const baseField = header
+    const isTwoColumns = type === "ai" && outputStyle === "rating_and_reason";
+    const mainHeader = isTwoColumns ? headerCol1.trim() : header.trim();
+    if (!mainHeader) return;
+    if (isTwoColumns && !headerCol2.trim()) return;
+
+    const baseField = mainHeader
       .toLowerCase()
       .replace(/\s+/g, "_")
       .replace(/[^a-z0-9_]/g, "")
@@ -94,7 +100,7 @@ export function ColumnEditor({ projectId, onColumnAdded, existingColumns = [] }:
       const useOnlyRelevant =
         type === "ai" && contextMode === "relevant" && suggestions == null;
 
-      if (type === "ai" && outputStyle === "rating_and_reason") {
+      if (isTwoColumns) {
         const reasonField = `${baseField}_motivo`.slice(0, 30);
         const reasonRes = await fetch("/api/search/columns", {
           method: "POST",
@@ -102,7 +108,7 @@ export function ColumnEditor({ projectId, onColumnAdded, existingColumns = [] }:
           body: JSON.stringify({
             projectId,
             field: reasonField,
-            header: `${header.trim()} (motivo)`,
+            header: headerCol2.trim(),
             type: "text",
           }),
         });
@@ -115,7 +121,7 @@ export function ColumnEditor({ projectId, onColumnAdded, existingColumns = [] }:
           body: JSON.stringify({
             projectId,
             field,
-            header: header.trim(),
+            header: mainHeader,
             type: "ai",
             prompt,
             inputColumnIds: inputIds,
@@ -147,6 +153,8 @@ export function ColumnEditor({ projectId, onColumnAdded, existingColumns = [] }:
       setPrompt("");
       setFormula("");
       setOutputStyle("single");
+      setHeaderCol1("");
+      setHeaderCol2("");
       setContextMode("all");
       setSelectedColumnIds([]);
       setSuggestions(null);
@@ -223,49 +231,38 @@ export function ColumnEditor({ projectId, onColumnAdded, existingColumns = [] }:
                       type="radio"
                       name="outputStyle"
                       checked={outputStyle === "rating_and_reason"}
-                      onChange={() => setOutputStyle("rating_and_reason")}
+                      onChange={() => {
+                        setOutputStyle("rating_and_reason");
+                        setHeaderCol1(header);
+                        setHeaderCol2((header.trim() || "") + " (explicación)");
+                      }}
                       className="rounded border-zinc-300"
                     />
                     Dos columnas (rating + explicación)
                   </label>
                 </div>
                 {outputStyle === "rating_and_reason" && (
-                  <div className="mt-3 rounded-md border border-zinc-200 bg-zinc-50 p-3 space-y-3 text-sm">
-                    <p className="text-zinc-700">
-                      Se crearán 2 columnas a partir de un único prompt. El LLM responderá en JSON y cada valor se guardará en su columna.
-                    </p>
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-left border-collapse text-xs">
-                        <thead>
-                          <tr className="border-b border-zinc-200">
-                            <th className="py-1.5 pr-2 font-medium text-zinc-600">Columna</th>
-                            <th className="py-1.5 pr-2 font-medium text-zinc-600">Nombre que verás</th>
-                            <th className="py-1.5 font-medium text-zinc-600">Tipo / Contenido</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          <tr className="border-b border-zinc-100">
-                            <td className="py-1.5 pr-2">1</td>
-                            <td className="py-1.5 pr-2">{header.trim() || "(nombre de columna)"}</td>
-                            <td className="py-1.5">Número del 1 al 10 (rating)</td>
-                          </tr>
-                          <tr>
-                            <td className="py-1.5 pr-2">2</td>
-                            <td className="py-1.5 pr-2">{header.trim() ? `${header.trim()} (motivo)` : "(nombre de columna) (motivo)"}</td>
-                            <td className="py-1.5">Texto (explicación breve)</td>
-                          </tr>
-                        </tbody>
-                      </table>
+                  <div className="mt-3 space-y-3">
+                    <div>
+                      <Label>Nombre columna 1</Label>
+                      <Input
+                        value={headerCol1}
+                        onChange={(e) => setHeaderCol1(e.target.value)}
+                        className="mt-1"
+                        placeholder="Ej: Score"
+                      />
+                      <p className="mt-1 text-xs text-zinc-500">Salida: número 1–10</p>
                     </div>
-                    <p className="text-zinc-600 text-xs">
-                      El mismo prompt se aplica a ambas; el modelo devuelve un número y una explicación. Formato de respuesta esperado:
-                    </p>
-                    <pre className="rounded bg-zinc-100 p-2 text-xs font-mono overflow-x-auto">
-                      {`{ "rating": 7, "explanation": "Breve explicación en una frase." }`}
-                    </pre>
-                    <p className="text-zinc-500 text-xs">
-                      El LLM debe responder solo con un JSON así; el sistema lo divide en las dos columnas.
-                    </p>
+                    <div>
+                      <Label>Nombre columna 2</Label>
+                      <Input
+                        value={headerCol2}
+                        onChange={(e) => setHeaderCol2(e.target.value)}
+                        className="mt-1"
+                        placeholder="Ej: Score (explicación)"
+                      />
+                      <p className="mt-1 text-xs text-zinc-500">Salida: texto (explicación breve)</p>
+                    </div>
                   </div>
                 )}
               </div>
@@ -389,7 +386,15 @@ export function ColumnEditor({ projectId, onColumnAdded, existingColumns = [] }:
             </>
           )}
         </div>
-        <Button onClick={handleSubmit} disabled={loading || !header.trim()}>
+        <Button
+          onClick={handleSubmit}
+          disabled={
+            loading ||
+            (type === "ai" && outputStyle === "rating_and_reason"
+              ? !headerCol1.trim() || !headerCol2.trim()
+              : !header.trim())
+          }
+        >
           {loading ? "Creando..." : "Crear"}
         </Button>
       </DialogContent>
