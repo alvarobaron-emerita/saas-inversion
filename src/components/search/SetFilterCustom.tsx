@@ -56,9 +56,24 @@ export const SetFilterCustom = forwardRef(function SetFilterCustom(
   useEffect(() => {
     if (valuesFromParent !== undefined) {
       setUniqueValues(valuesFromParent);
-      setSelected(new Set(valuesFromParent));
-      appliedModelRef.current = null;
-      setAppliedModel(null);
+      
+      // FIX: No sobrescribir la selección del usuario si ya existe.
+      // Solo inicializamos 'selected' si es la primera vez (cuando uniqueValues estaba vacío).
+      setUniqueValues((prev) => {
+        if (prev.length === 0) {
+          setSelected(new Set(valuesFromParent));
+        } else {
+          // Opcional: Si hay nuevos valores que antes no existían, ¿los seleccionamos por defecto?
+          // Comportamiento Excel: No, mantienes tu filtro.
+          // Pero si desaparecen valores que tenías seleccionados, hay que limpiar 'selected'?
+          // Dejemos que el usuario decida. Mantener 'selected' intacto es lo más seguro para evitar el "blanco".
+        }
+        return valuesFromParent;
+      });
+
+      // NO reseteamos appliedModel aquí, porque eso borraría el filtro activo al recibir nuevos datos.
+      // appliedModelRef.current = null;
+      // setAppliedModel(null);
       return;
     }
     const values = new Set<string>();
