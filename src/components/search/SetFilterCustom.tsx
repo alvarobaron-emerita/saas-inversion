@@ -59,6 +59,17 @@ export const SetFilterCustom = forwardRef(function SetFilterCustom(
          }
       }
       const v = node.data?.[field];
+      
+      // Fallback: try case-insensitive match if direct access fails
+      if (v === undefined && node.data) {
+         const keys = Object.keys(node.data);
+         const match = keys.find(k => k.toLowerCase() === field.toLowerCase());
+         if (match) return node.data[match];
+         
+         // Fallback 2: try colId
+         if (node.data[colId] !== undefined) return node.data[colId];
+      }
+      
       return v;
     },
     [valueGetter, field, api, colId]
