@@ -48,9 +48,10 @@ export const SetFilterCustom = forwardRef(function SetFilterCustom(
     (node: { data?: Record<string, unknown> }) => {
       if (valueGetter) return valueGetter(node);
       // Use Grid API to get value if available (handles valueGetters/formulas correctly)
-      // @ts-expect-error - api type is loose in props but has getValue in real ag-grid api
-      if (api && typeof api.getValue === 'function') {
-         return api.getValue(colId, node);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const gridApi = api as any;
+      if (gridApi && typeof gridApi.getValue === 'function') {
+         return gridApi.getValue(colId, node);
       }
       const v = node.data?.[field];
       return v;
