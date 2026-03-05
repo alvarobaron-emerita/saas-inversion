@@ -54,7 +54,7 @@ export const SetFilterCustom = forwardRef(function SetFilterCustom(
          try {
            const val = gridApi.getValue(colId, node);
            if (val !== undefined) return val;
-         } catch (e) {
+         } catch {
            // Fallback if api fails
          }
       }
