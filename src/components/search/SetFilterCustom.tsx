@@ -51,7 +51,12 @@ export const SetFilterCustom = forwardRef(function SetFilterCustom(
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const gridApi = api as any;
       if (gridApi && typeof gridApi.getValue === 'function') {
-         return gridApi.getValue(colId, node);
+         try {
+           const val = gridApi.getValue(colId, node);
+           if (val !== undefined) return val;
+         } catch (e) {
+           // Fallback if api fails
+         }
       }
       const v = node.data?.[field];
       return v;
@@ -171,6 +176,13 @@ export const SetFilterCustom = forwardRef(function SetFilterCustom(
           const v = getValue({ data: rowData });
           const s = formatCellValue(v);
           const passes = values.has(s);
+          
+          // Debugging for blank table issue
+          // Solo logueamos si falla, para no saturar
+          if (!passes && Math.random() < 0.05) { // Sample 5% of failures to avoid console spam
+             console.log(`[SetFilter Fail] Field: ${field}, RowVal: "${s}" (${typeof v}), FilterHas:`, values.has(s), "First 5 Filters:", Array.from(values).slice(0, 5));
+          }
+          
           if (typeof process !== "undefined" && process.env.NODE_ENV === "development" && !(window as unknown as { __setFilterDebugLogged?: boolean }).__setFilterDebugLogged) {
             (window as unknown as { __setFilterDebugLogged?: boolean }).__setFilterDebugLogged = true;
             console.log("[SetFilter] doesFilterPass debug", {
