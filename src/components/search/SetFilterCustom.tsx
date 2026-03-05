@@ -48,7 +48,7 @@ export const SetFilterCustom = forwardRef(function SetFilterCustom(
     (node: { data?: Record<string, unknown> }) => {
       if (valueGetter) return valueGetter(node);
       // Use Grid API to get value if available (handles valueGetters/formulas correctly)
-      // @ts-ignore - api type is loose in props but has getValue in real ag-grid api
+      // @ts-expect-error - api type is loose in props but has getValue in real ag-grid api
       if (api && typeof api.getValue === 'function') {
          return api.getValue(colId, node);
       }
@@ -86,6 +86,7 @@ export const SetFilterCustom = forwardRef(function SetFilterCustom(
     });
     
     // NO resetear appliedModel aquí
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [valuesFromParent, api, getValue]);
 
   const filteredValues = useMemo(() => {
