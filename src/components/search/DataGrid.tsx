@@ -172,7 +172,7 @@ export const DataGrid = forwardRef<AgGridReactType, DataGridProps>(function Data
         return base;
       }),
     ],
-    [sortedColumns, formatCellValue, uniqueValuesByField, onColumnPinChange, onSelectionChanged, selectedColumnIds, onColumnVisible]
+    [sortedColumns, formatCellValue, onColumnPinChange, onSelectionChanged, selectedColumnIds, onColumnVisible]
   );
 
   const onColumnResizedCallback = useCallback(
