@@ -68,6 +68,11 @@ export const SetFilterCustom = forwardRef(function SetFilterCustom(
          
          // Fallback 2: try colId
          if (node.data[colId] !== undefined) return node.data[colId];
+         
+         // DEBUG: Log available keys once to detect mismatch
+         if (Math.random() < 0.001) {
+            console.log(`[SetFilter Debug] Keys for field '${field}':`, Object.keys(node.data));
+         }
       }
       
       return v;
