@@ -47,35 +47,26 @@ export const SetFilterCustom = forwardRef(function SetFilterCustom(
   const getValue = useCallback(
     (node: { data?: Record<string, unknown> }) => {
       if (valueGetter) return valueGetter(node);
+      // Use Grid API to get value if available (handles valueGetters/formulas correctly)
+      // @ts-ignore - api type is loose in props but has getValue in real ag-grid api
+      if (api && typeof api.getValue === 'function') {
+         return api.getValue(colId, node);
+      }
       const v = node.data?.[field];
       return v;
     },
-    [valueGetter, field]
+    [valueGetter, field, api, colId]
   );
 
   useEffect(() => {
+    // Si el padre nos da valores fijos (ahora eliminado en DataGrid, pero por compatibilidad)
     if (valuesFromParent !== undefined) {
       setUniqueValues(valuesFromParent);
-      
-      // FIX: No sobrescribir la selección del usuario si ya existe.
-      // Solo inicializamos 'selected' si es la primera vez (cuando uniqueValues estaba vacío).
-      setUniqueValues((prev) => {
-        if (prev.length === 0) {
-          setSelected(new Set(valuesFromParent));
-        } else {
-          // Opcional: Si hay nuevos valores que antes no existían, ¿los seleccionamos por defecto?
-          // Comportamiento Excel: No, mantienes tu filtro.
-          // Pero si desaparecen valores que tenías seleccionados, hay que limpiar 'selected'?
-          // Dejemos que el usuario decida. Mantener 'selected' intacto es lo más seguro para evitar el "blanco".
-        }
-        return valuesFromParent;
-      });
-
-      // NO reseteamos appliedModel aquí, porque eso borraría el filtro activo al recibir nuevos datos.
-      // appliedModelRef.current = null;
-      // setAppliedModel(null);
+      if (uniqueValues.length === 0) setSelected(new Set(valuesFromParent));
       return;
     }
+
+    // Calcular valores desde el Grid (Estable y correcto)
     const values = new Set<string>();
     api.forEachNode((node) => {
       const v = getValue(node);
@@ -83,10 +74,18 @@ export const SetFilterCustom = forwardRef(function SetFilterCustom(
       if (s !== "") values.add(s);
     });
     const sorted = Array.from(values).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+    
     setUniqueValues(sorted);
-    setSelected(new Set(sorted));
-    appliedModelRef.current = null;
-    setAppliedModel(null);
+    // Solo seleccionamos todo si es la primera vez (estado vacío)
+    // Esto evita que al filtrar se resetee la selección.
+    setUniqueValues((prev) => {
+        if (prev.length === 0 && sorted.length > 0) {
+             setSelected(new Set(sorted));
+        }
+        return sorted;
+    });
+    
+    // NO resetear appliedModel aquí
   }, [valuesFromParent, api, getValue]);
 
   const filteredValues = useMemo(() => {

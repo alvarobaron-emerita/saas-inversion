@@ -102,23 +102,8 @@ export const DataGrid = forwardRef<AgGridReactType, DataGridProps>(function Data
     return String(v);
   }, []);
 
-  const uniqueValuesByField = useMemo(() => {
-    const map = new Map<string, Set<string>>();
-    for (const row of rows) {
-      for (const [key, val] of Object.entries(row.data)) {
-        const s = formatCellValue(val);
-        if (s === "") continue;
-        if (!map.has(key)) map.set(key, new Set());
-        map.get(key)!.add(s);
-      }
-    }
-    const out: Record<string, string[]> = {};
-    map.forEach((set, key) => {
-      out[key] = Array.from(set).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
-    });
-    return out;
-  }, [rows, formatCellValue]);
-
+  // uniqueValuesByField calculation removed to prevent columnDefs instability
+  
   const columnDefs: ColDef[] = useMemo(
     () => [
       ...(onSelectionChanged ? [checkboxColumnDef] : []),
@@ -139,7 +124,9 @@ export const DataGrid = forwardRef<AgGridReactType, DataGridProps>(function Data
           flex: 0,
           resizable: true,
           filter: SetFilterCustom,
-          filterParams: { values: uniqueValuesByField[col.field] ?? [] },
+          filterParams: { 
+            // values: uniqueValuesByField[col.field] ?? [] // REMOVED: Let filter calc its own values
+          },
           sortable: true,
           pinned: col.pinned === "left" || col.pinned === "right" ? col.pinned : undefined,
           hide: col.hidden === true,
